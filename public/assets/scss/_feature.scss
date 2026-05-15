@@ -1,0 +1,51 @@
+//Mozzo
+
+//open-table-inner
+.open-table-section {
+	&::before {
+		position: absolute;
+		background-color: #311400;
+		content: "";
+		width: 1520px;
+		height: 734px;
+		border-radius: 20px;
+		z-index: -1;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+	}
+	.thumb-left {
+		bottom: -100px;
+	}
+	.thumb-right {
+		top: -100px;
+	}
+	@include breakpoint(max-lg) {
+		padding: 0 0 !important;
+		.thumb-left {
+			bottom: -0px;
+		}
+		.thumb-right {
+			top: -0px;
+		}
+	}
+}
+.open-table-inner {
+	background-color: #311400;
+	border-radius: 20px;
+	.section-title-style4 {
+		border-bottom: 1px solid rgba(217, 217, 217, 0.2);
+	}
+	.icon-bottom {
+		bottom: 0;
+		z-index: 1;
+		left: 50%;
+		transform: translateX(-50%);
+	}
+	.icon-top {
+		top: 0;
+		z-index: 1;
+		left: 50%;
+		transform: translateX(-50%);
+	}
+}

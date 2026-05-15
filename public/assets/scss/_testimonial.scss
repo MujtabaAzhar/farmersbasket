@@ -1,0 +1,150 @@
+//Testimonial
+.testimonial-wrapper1 {
+	position: relative;
+	&::before {
+		position: absolute;
+		right: 0;
+		top: -45px;
+		width: 85%;
+		height: 340px;
+		content: "";
+		background-color: #fef9f8;
+		border-radius: 20px;
+		z-index: -1;
+	}
+	.swiper-dot {
+		position: absolute;
+		right: 170px;
+		bottom: 70px;
+		left: initial;
+		width: initial;
+	}
+	@include breakpoint(max-xxl) {
+		.swiper-dot {
+			position: absolute;
+			right: 50px;
+			bottom: 70px;
+			left: initial;
+			width: initial;
+		}
+	}
+	@include breakpoint(max-xl) {
+		.swiper-dot {
+			position: absolute;
+			right: initial;
+			bottom: -45px;
+			left: 0;
+			width: 100%;
+		}
+	}
+	&.testimonial-wrapper4 {
+		&::before {
+			display: none;
+		}
+		.testimonial-items {
+			height: 356px;
+			&::before {
+				position: absolute;
+				right: 0;
+				top: 0px;
+				height: 100%;
+				width: 85%;
+				content: "";
+				background-color: #fef9f8;
+				border-radius: 20px;
+				z-index: -1;
+				overflow: hidden;
+				@include breakpoint(max-md){
+					width: 100%;
+				}
+			}
+			position: relative;
+			border-radius: 20px;
+			.testimonial-thumb {
+				border: 3px solid $black;
+			}
+			@include breakpoint(max-md){
+				height: initial;
+			}
+		}
+		.dot-black {
+			z-index: 3;
+			.swiper-pagination-bullet.swiper-pagination-bullet-active {
+				background-color: $black;
+			}
+		}
+	}
+}
+.testimonial-items {
+	position: relative;
+	&.style1 {
+		gap: 70px;
+		.quote-icon {
+			position: absolute;
+			bottom: -10px;
+			right: 200px;
+			width: 100px;
+			z-index: -1;
+		}
+		@include breakpoint(max-xl) {
+			gap: 18px 16px;
+		}
+	}
+}
+//Testimonial
+
+.testimonial-items02 {
+	.box {
+		padding: 40px 40px;
+		border-radius: 20px;
+	}
+	@include breakpoint(max-xl) {
+		.box {
+			padding: 20px 20px;
+		}
+	}
+}
+
+//Common Testimonial Btn
+.common-slide-btn {
+	width: 80px;
+	height: 80px;
+	border: 1px solid $theme-color;
+	i {
+		font-size: 29px;
+		color: $black;
+	}
+	&:hover {
+		background: $theme-color;
+		i {
+			color: $black;
+		}
+	}
+	transition: all 0.4s;
+	i {
+		transition: all 0.4s;
+	}
+}
+.swiper-pagination-total {
+	color: $black;
+}
+//Common Testimonial Btn
+
+
+//testimonial-items
+.testimonial-items{
+	&.testimonial-style03{
+		background-color: #C19D56;
+		border-radius: 20px;
+		padding: 40px;
+		p{
+			font-style: italic;
+		}
+		.admin{
+			border: 3px solid $white;
+		}
+		@include breakpoint(max-xxl){
+			padding: 24px;
+		}
+	}
+}

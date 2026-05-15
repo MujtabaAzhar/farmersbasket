@@ -1,0 +1,322 @@
+/* --------------------------------------------
+    Template Default Fonts & Fonts Styles
+ ---------------------------------------------- */
+
+@import url("https://fonts.googleapis.com/css2?family=Afacad:ital,wght@0,400..700;1,400..700&family=Baloo+Bhai+2:wght@400..800&family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Outfit:wght@100..900&family=Reggae+One&display=swap");
+
+$heading-font: "Outfit", sans-serif;
+$heading-font-bhalo: "Baloo Bhai 2", sans-serif;
+$heading-font-edensor: "Edensor", sans-serif;
+$heading-font-afacad: "Afacad", sans-serif;
+$heading-font-cormorant: "Cormorant Garamond", serif;
+$heading-font-regge: "Reggae One", system-ui;
+$sub-font: "Outfit", sans-serif;
+$body-font: "Inter", sans-serif;
+
+//font-family: "Font Awesome 6 Free";
+
+//Default FOnt	
+.heading-font {
+	font-family: $heading-font;
+}
+.heading-font-bhalo {
+	font-family: $heading-font-bhalo;
+}
+.heading-font-edensor {
+	font-family: $heading-font-edensor;
+	letter-spacing: 0.5px;
+}
+.heading-font-afasad {
+	font-family: $heading-font-afacad;
+}
+.heading-font-cormorant {
+	font-family: $heading-font-cormorant;
+}
+.heading-font-regge {
+	font-family: $heading-font-cormorant;
+}
+.sub-font {
+	font-family: $sub-font;
+}
+.body-font {
+	font-family: $body-font;
+}
+@font-face {
+	font-family: "Edensor";
+	src: url("../fonts/Edensor-FREE.otf") format("opentype");
+	font-weight: normal;
+	font-style: normal;
+}
+//Default FOnt
+
+$fa: "Font Awesome 6 Pro";
+
+body {
+	font-family: $body-font;
+	font-size: 20px;
+	font-weight: 400;
+	line-height: 28px;
+	color: $text-color;
+	background-color: $white;
+	padding: 0;
+	margin: 0;
+	overflow-x: hidden;
+}
+
+ul {
+	padding: 0;
+	margin: 0;
+	list-style: none;
+}
+
+button {
+	border: none;
+	background-color: transparent;
+	padding: 0;
+}
+
+input:focus {
+	color: $black;
+	outline: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	font-family: $heading-font;
+	margin: 0px;
+	font-style: normal;
+	padding: 0;
+	color: $header-color;
+	@include transition;
+}
+
+h1 {
+	font-size: 100px;
+	font-weight: 900;
+	line-height: 100%;
+}
+
+h2 {
+	font-size: 50px;
+	line-height: 120%;
+	font-weight: 900;
+
+	@include breakpoint(max-xl) {
+		font-size: 44px;
+	}
+
+	@include breakpoint(max-lg) {
+		font-size: 42px;
+	}
+
+	@include breakpoint(max-md) {
+		font-size: 36px;
+	}
+	@include breakpoint(max-sm) {
+		font-size: 32px;
+	}
+}
+
+h3 {
+	font-size: 24px;
+	font-weight: 900;
+	line-height: 130%;
+
+	@include breakpoint(max-lg) {
+		font-size: 22px;
+	}
+	@include breakpoint(max-md) {
+		font-size: 20px;
+	}
+}
+
+h4 {
+	font-size: 22px;
+	font-weight: 700;
+	line-height: 145%;
+	@include breakpoint(max-lg) {
+		font-size: 20px;
+	}
+	@include breakpoint(max-md) {
+		font-size: 18px;
+	}
+}
+
+h5 {
+	font-size: 20px;
+	font-weight: 700;
+	@include breakpoint(max-lg) {
+		font-size: 19px;
+	}
+	@include breakpoint(max-md) {
+		font-size: 18px;
+	}
+}
+
+h6 {
+	font-size: 18px;
+	font-weight: 600;
+	line-height: 145%;
+}
+
+a {
+	text-decoration: none;
+	outline: none !important;
+	cursor: pointer;
+	color: $header-color;
+	@include transition;
+}
+
+p {
+	margin: 0px;
+	@include transition;
+	color: $text-color;
+}
+
+span {
+	margin: 0px;
+	@include transition;
+}
+
+//Default Css
+.d-center {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+i {
+	line-height: 1.5 !important;
+}
+
+//card
+.order-card_box {
+	.icons {
+		border: 2px solid $theme-color;
+	}
+	padding: 30px 24px 40px 40px;
+	box-shadow: 0 0 20px 0 #f4e8e6;
+	transition: all 0.4s;
+	&:hover {
+		box-shadow: 0 0 20px 0 #f4e8e662;
+		.icons {
+			background-color: transparent;
+			img {
+				filter: brightness(0);
+			}
+		}
+		.step-badge {
+			background-color: $theme-color;
+			color: $white;
+		}
+	}
+	&.style2 {
+		.icons {
+			border: 1px solid $theme-color;
+		}
+		padding: 0px 0px 0px 0px;
+		box-shadow: none;
+	}
+	@include breakpoint(max-xl) {
+		padding: 24px 18px 30px 30px;
+	}
+}
+.order-card__theme3 {
+	.icons {
+		border-color: $theme-color-2;
+	}
+	.step-badge {
+		background-color: $theme-color-3 !important;
+		color: $white !important;
+	}
+	img {
+		filter: brightness(0);
+	}
+}
+
+.smooth {
+	transition: all 0.4s;
+}
+
+.restaurant-card {
+	.thumb {
+		z-index: 1;
+		&::before {
+			position: absolute;
+			left: 0%;
+			width: 100%;
+			height: 100%;
+			top: 0;
+			content: "";
+			background: linear-gradient(
+				180deg,
+				rgba(0, 0, 0, 0) 55.28%,
+				rgba(0, 0, 0, 0.5) 100%
+			);
+			z-index: 1;
+			transition: all 0.4s;
+		}
+	}
+}
+.restaurant-card_text {
+	.thumb {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		.restaurant-order-text {
+			top: 50%;
+			left: 50%;
+			width: 100%;
+			transform: translate(-50%, -50%);
+			z-index: 2;
+			opacity: 0;
+			visibility: hidden;
+			transition: all 0.4s;
+		}
+	}
+	&:hover {
+		.thumb {
+			&::before {
+				background: rgb(0, 0, 0, 0.7);
+			}
+		}
+		.restaurant-order-text {
+			opacity: 1;
+			visibility: visible;
+		}
+	}
+}
+
+//chef-single-item
+.chef-single-item {
+	.content {
+		opacity: 0;
+		visibility: hidden;
+		transition: all 0.4s;
+	}
+	&:hover {
+		.content {
+			opacity: 1;
+			visibility: visible;
+		}
+	}
+}
+
+
+.pagination{
+	li{
+		a{
+			transition: all 0.4s;
+			display: inline-block;
+			&.active,
+			&:hover{
+				color: $white !important;
+				background: $theme-color !important;
+			}
+		}
+	}
+}

@@ -1,0 +1,53 @@
+//.about-thumb3
+.choose-thumb3 {
+	.thumb {
+		max-width: 434px;
+	}
+	.choose-small {
+		bottom: -30px;
+		left: -30px;
+	}
+	.choose-icon-thumb {
+		top: -120px;
+		right: -20px;
+		.choose-text-circle {
+			animation: 20s cir36 linear infinite;
+		}
+	}
+	@include breakpoint(max-lg) {
+		.thumb {
+			max-width: 100%;
+		}
+		.choose-icon-thumb {
+			top: 10px;
+			right: 10px;
+			.choose-text-circle {
+				animation: 20s cir36 linear infinite;
+			}
+		}
+	}
+	@include breakpoint(max-sm) {
+		.thumb {
+			max-width: 100%;
+		}
+		.choose-icon-thumb {
+			.choose-text-circle {
+				animation: 20s cir36 linear infinite;
+			}
+		}
+		.choose-small {
+			bottom: 5px;
+			left: 5px;
+		}
+	}
+}
+
+.about-thumb-wrap{
+    .line{
+        display: block;
+        height: 94px;
+        width: 1px;
+        background-color: rgb(193, 157, 86, 0.5);
+    }
+}
+

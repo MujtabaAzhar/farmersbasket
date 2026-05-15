@@ -1,0 +1,23 @@
+.brand-slider {
+	.swiper-slide {
+		&.swiper-slide-active {
+			.brand-item {
+				img {
+					opacity: 1;
+                    transform: scale(1.05);
+				}
+			}
+		}
+	}
+	.brand-item {
+		max-width: 130px;
+		margin: 0 auto;
+		transition: all 0.4s;
+		img {
+			height: 100%;
+			object-fit: contain;
+			width: 100%;
+			transition: all 0.4s;
+		}
+	}
+}

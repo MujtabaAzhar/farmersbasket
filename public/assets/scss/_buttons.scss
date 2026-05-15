@@ -1,0 +1,217 @@
+//>>>>> Component Button Here <<<<<//
+.theme-btn {
+	position: relative;
+	z-index: 2;
+	vertical-align: middle;
+	display: inline-flex;
+	gap: 8px;
+	border: none;
+	text-align: center;
+	background-color: $theme-color;
+	color: $white;
+	font-size: 15px;
+	font-weight: 500;
+	text-transform: capitalize;
+	line-height: 18px;
+	padding: 11px 20px 13px;
+	overflow: hidden;
+	align-items: center;
+	border-radius: 8px;
+
+	&::after,
+	&::before {
+		content: "";
+		display: block;
+		width: 50px;
+		height: 50px;
+		transform: translate(-50%, -50%);
+		position: absolute;
+		border-radius: 50%;
+		z-index: -1;
+		background-color: $header-color;
+		transition: 1s ease;
+	}
+
+	&::before {
+		top: -2em;
+		left: -2em;
+	}
+
+	&::after {
+		left: calc(100% + 2em);
+		top: calc(100% + 2em);
+	}
+
+	&:hover {
+		color: $white;
+		box-shadow: none;
+
+		&::after,
+		&::before {
+			height: 410px;
+			width: 410px;
+		}
+	}
+	&.btn-dark-common {
+		background-color: $black;
+		&::after,
+		&::before {
+			background-color: $theme-color;
+		}
+	}
+	&.btn--secondary{		
+		color: $white;
+		background-color: $text-secondary;
+	}
+	&.btn-outline--seconday{
+		border: 1px solid $text-secondary;
+		color: $text-secondary;
+		padding: 10px 20px 11px;
+		background-color: transparent;
+		&:hover{
+			color: $white;
+			&::before{
+				background-color: $text-secondary;
+			}
+		}
+	}
+	&.btn-outline-blak {
+		border: 1px solid #c5c5c5;
+		padding: 10px 20px 11px;
+		color: $black;
+		background-color: transparent;
+		transition: all 0.4s;
+		&:hover {
+			color: $white;
+		}
+	}
+	&.btn-outline-theme {
+		color: $theme-color;
+		border: 1px solid $theme-color;
+		background-color: transparent;
+		transition: all 0.4s;
+		&:hover {
+			color: $white;
+		}
+	}
+	&.btn-outline-white {
+		border: 1px solid #fff;
+		padding: 10px 20px 11px;
+		color: $white;
+		background-color: transparent;
+		transition: all 0.4s;
+		&:hover {
+			&::after,
+			&::before{
+				background-color: $theme-color;
+			}
+			color: $white;
+			background-color: $theme-color;
+			border-color: $theme-color;
+		}
+	}
+
+	&.theme2-btn {
+		background-color: $theme-color-2;
+		&::after,
+		&::before {
+			background-color: $theme-color;
+		}
+	}
+
+	&.theme3-btn {
+		background-color: $theme-color-3;
+		&::after,
+		&::before {
+			background-color: $theme-color;
+		}
+	}
+
+	&.header-bg {
+		background-color: $header-color;
+		&::after,
+		&::before {
+			background-color: $theme-color;
+		}
+	}
+	&.extra-bg {
+		background-color: $bg-color;
+		color: $black;
+		&::after,
+		&::before {
+			background-color: $theme-color;
+		}
+	}
+
+	&.bg-white {
+		background-color: $white;
+		color: $header-color;
+
+		&::before,
+		&::after {
+			background-color: $header-color;
+		}
+
+		&:hover {
+			color: $white;
+		}
+	}
+
+	@include breakpoint(max-sm) {
+		padding: 14px 30px;
+		font-size: 14px;
+	}
+}
+
+.link-btn {
+	display: inline-block;
+	color: $header-color;
+	font-weight: 700;
+	font-size: 18px;
+	text-transform: uppercase;
+	font-family: "Expose", sans-serif;
+	border-bottom: 2px solid $header-color;
+
+	&:hover {
+		border-bottom: 2px solid $theme-color;
+		color: $theme-color;
+	}
+}
+
+.view-more {
+	transition: all 0.4s;
+	.view-text {
+		font-size: 14px;
+		font-weight: 600;
+		color: $black;
+		transition: all 0.4s;
+	}
+	.icon {
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		transition: all 0.4s;
+		transform: rotate(-15deg);
+		i {
+			transition: all 0.4s;
+		}
+	}
+	&:hover {
+		.icon {
+			transform: rotate(-0deg);
+			background: $theme-color;
+		}
+	}
+}
+.theme-btn-coffee{
+	&:hover{
+		&::before{
+			background-color: #86624A !important;
+		}
+		&::after{
+			background-color: #86624A !important;
+		}
+	}
+}
+
+//>>>>> Component Button End <<<<<//

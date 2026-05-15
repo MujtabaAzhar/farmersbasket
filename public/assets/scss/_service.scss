@@ -1,0 +1,164 @@
+//Mozzo
+.menu-special-item {
+	.menu-special-head {
+		.line {
+			border-bottom: 1px dashed #4b4b4b;
+			display: block;
+		}
+	}
+}
+.brand-eat-item {
+	.content {
+		background: linear-gradient(
+			180deg,
+			rgba(1, 18, 21, 0) 0%,
+			rgba(0, 13, 15, 0.59) 41.45%,
+			#00090b 100%
+		);
+	}
+	h3 {
+		font-size: 36px;
+		max-width: 280px;
+		margin: 0 auto;
+	}
+}
+.table-menu-items {
+	background-size: cover;
+	z-index: 1;
+	border-bottom: 1px solid rgb(17, 17, 17, 0.5);
+	transition: all 0.4s;
+	.table-menu-inner {
+		padding: 75px 40px;
+	}
+	&::before {
+		background: linear-gradient(
+			90deg,
+			#111 0%,
+			rgba(17, 17, 17, 0.93) 59.93%,
+			rgba(17, 17, 17, 0.8) 69.42%,
+			rgba(17, 17, 17, 0) 100%
+		);
+		z-index: -1;
+		content: "";
+		width: 100%;
+		height: 100%;
+		inset: 0;
+		position: absolute;
+		opacity: 0;
+	}
+	&.active,
+	&:hover {
+		background: url(../../assets/img/home-4/table-menu-bg.jpg) no-repeat
+			center center;
+		background-size: cover;
+		&::before {
+			opacity: 1;
+		}
+		h2 {
+			a {
+				color: $white !important;
+			}
+			color: $white !important;
+		}
+		.theme-btn {
+			color: $white;
+		}
+	}
+	@include breakpoint(max-xl) {
+		.table-menu-inner {
+			padding: 45px 30px;
+		}
+		h2 {
+			font-size: 26px;
+		}
+	}
+	@include breakpoint(max-md) {
+		.table-menu-inner {
+			padding: 30px 24px;
+		}
+		h2 {
+			font-size: 22px;
+		}
+	}
+}
+
+//choose-items
+.choose-coffe-cup{
+	top: -130px;
+	left: 50%;
+	transform: translateX(-50%);
+}
+.choose-coffee{
+	animation: cir36 20s linear infinite;
+}
+.choose-items{
+	border: 1px solid rgb(30, 30, 30, 0.2);
+	.icon{
+		background-color: rgb(30, 30, 30, 0.1);
+	}
+	p{
+		line-height: 24px;
+	}
+}
+.text-slide-section03{
+	transform: rotate(4deg);
+	width: 101%;
+	margin-left: -20px;
+	@media screen and (max-width: 1919px) {
+		margin-left: 0;
+		width: 100%;
+		transform: translate(0);
+	}
+}
+//Mozzo
+
+//Service Section
+.services-section2 {
+	.container {
+		max-width: 1730px;
+		margin: 0 auto;
+	}
+}
+.service2-items {
+	position: relative;
+	transition: all 0.5s;
+	width: 100%;
+	img {
+		width: 100%;
+	}
+	z-index: 1;
+	&::before {
+		position: absolute;
+		left: 0;
+		bottom: 0;
+		content: "";
+		width: 100%;
+		height: 100%;
+		background: linear-gradient(
+			180deg,
+			rgba(0, 0, 0, 0.8) 28.38%,
+			rgba(0, 0, 0, 0.7) 56.68%
+		);
+	}
+	h3 {
+		position: absolute;
+		bottom: 36px;
+		left: 40px;
+	}
+	&:hover {
+		transform: scale(1.04);
+	}
+}
+//Service Section
+
+//order-card_box03
+.order-card_box03{
+	.icons{
+		border-color: $theme-color-5;
+	}
+	&:hover{
+		.step-badge{
+			background-color: $theme-color-5 !important;
+		}
+	}
+}

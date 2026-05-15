@@ -1,0 +1,23 @@
+
+
+.order-customize-wrapper{
+	.line{
+		width: 1px;
+		height: 154px;
+		display: block;
+		background-color: $theme-color;
+	}
+	@include breakpoint(max-md){
+		.line{
+			display: none;
+		}
+		.max-w-300{
+			width: calc(90% / 2);
+		}
+	}
+	@media screen and (max-width: 470px) {
+		.max-w-300{
+			width: 100%;
+		}
+	}
+}

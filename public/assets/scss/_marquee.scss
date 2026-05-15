@@ -1,0 +1,46 @@
+.scrolling-wrap {
+	overflow: hidden;
+	white-space: nowrap;
+	display: flex;
+	gap: 20px;
+	.comm {
+		display: flex;
+		align-items: center;
+		animation: scroll 60s linear infinite;
+		gap: 30px;
+		cursor: pointer;
+		.cmn-textslide {
+			font-size: 130px;
+			font-weight: 900;
+			text-transform: uppercase;
+            font-family: $heading-font;
+            line-height: 134px;
+		}
+        
+		.text-custom-storke {
+			-webkit-text-stroke:  rgba(228, 228, 229, 1);
+		}
+	}
+	&:hover {
+		.comm {
+			animation-play-state: paused;
+		}
+	}
+}
+
+@keyframes scroll {
+	0% {
+		transform: translateX(0);
+	}
+	100% {
+		transform: translateX(-100%);
+	}
+}
+@keyframes scroll2 {
+	0% {
+		transform: translateX(0%);
+	}
+	100% {
+		transform: translateX(-200%);
+	}
+}
