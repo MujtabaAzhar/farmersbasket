@@ -7,7 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class Transection extends Model
 {
-      use HasFactory;
+    use HasFactory;
+
+    protected $fillable = [
+        'user_id',
+        'order_id',
+        'mode',
+        'status',
+    ];
+
     public function order()
     {
         return $this->belongsTo(Order::class);

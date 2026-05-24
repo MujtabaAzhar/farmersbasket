@@ -6,25 +6,11 @@
             <div class="flex items-center flex-wrap justify-between gap20 mb-27">
                 <h3>Edit Product</h3>
                 <ul class="breadcrumbs flex items-center flex-wrap justify-start gap10">
-                    <li>
-                        <a href="{{ route('admin.index') }}">
-                            <div class="text-tiny">Dashboard</div>
-                        </a>
-                    </li>
-                    <li>
-                        <i class="icon-chevron-right"></i>
-                    </li>
-                    <li>
-                        <a href="{{ route('admin.products') }}">
-                            <div class="text-tiny">Products</div>
-                        </a>
-                    </li>
-                    <li>
-                        <i class="icon-chevron-right"></i>
-                    </li>
-                    <li>
-                        <div class="text-tiny">Edit: {{ $product->name }}</div>
-                    </li>
+                    <li><a href="{{ route('admin.index') }}"><div class="text-tiny">Dashboard</div></a></li>
+                    <li><i class="icon-chevron-right"></i></li>
+                    <li><a href="{{ route('admin.products') }}"><div class="text-tiny">Products</div></a></li>
+                    <li><i class="icon-chevron-right"></i></li>
+                    <li><div class="text-tiny">Edit: {{ $product->name }}</div></li>
                 </ul>
             </div>
 
@@ -33,81 +19,80 @@
                 @csrf
                 @method('PUT')
 
-                <!-- Basic Product Information -->
+                <!-- Basic Information -->
                 <div class="wg-box">
                     <h4 class="mb-3">Basic Information</h4>
-                    
+
                     <fieldset class="name mb-4">
                         <div class="body-title mb-10">Product Name <span class="tf-color-1">*</span></div>
-                        <input class="form-control" type="text" placeholder="Enter product name"
-                            name="name" value="{{ $product->name }}" aria-required="true" required="">
-                        <small class="text-muted">Maximum 100 characters</small>
-                        @error('name')
-                            <span class="alert alert-danger d-block mt-2">{{ $message }}</span>
-                        @enderror
+                        <input class="form-control" type="text" name="name" value="{{ old('name', $product->name) }}" required>
+                        @error('name')<span class="alert alert-danger d-block mt-2">{{ $message }}</span>@enderror
                     </fieldset>
 
                     <fieldset class="name mb-4">
                         <div class="body-title mb-10">Product Slug <span class="tf-color-1">*</span></div>
-                        <input class="form-control" type="text" placeholder="Enter product slug"
-                            name="slug" value="{{ $product->slug }}" aria-required="true" required="">
-                        <small class="text-muted">URL-friendly name (auto-generated from product name)</small>
-                        @error('slug')
-                            <span class="alert alert-danger d-block mt-2">{{ $message }}</span>
-                        @enderror
+                        <input class="form-control" type="text" name="slug" value="{{ old('slug', $product->slug) }}" required>
+                        @error('slug')<span class="alert alert-danger d-block mt-2">{{ $message }}</span>@enderror
                     </fieldset>
 
                     <div class="row gap-3 mb-4">
                         <div class="col-md-6">
                             <fieldset>
                                 <div class="body-title mb-10">Category <span class="tf-color-1">*</span></div>
-                                <select class="form-control" name="category_id" required="">
+                                <select class="form-control" name="category_id" required>
                                     <option value="">-- Choose Category --</option>
                                     @foreach($categories as $category)
-                                        <option value="{{ $category->id }}" {{ $product->category_id == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
+                                        <option value="{{ $category->id }}" {{ old('category_id', $product->category_id) == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
                                     @endforeach
                                 </select>
-                                @error('category_id')
-                                    <span class="alert alert-danger d-block mt-2">{{ $message }}</span>
-                                @enderror
+                                @error('category_id')<span class="alert alert-danger d-block mt-2">{{ $message }}</span>@enderror
                             </fieldset>
                         </div>
                         <div class="col-md-6">
                             <fieldset>
                                 <div class="body-title mb-10">Brand <span class="tf-color-1">*</span></div>
-                                <select class="form-control" name="brand_id" required="">
+                                <select class="form-control" name="brand_id" required>
                                     <option value="">-- Choose Brand --</option>
                                     @foreach($brands as $brand)
-                                        <option value="{{ $brand->id }}" {{ $product->brand_id == $brand->id ? 'selected' : '' }}>{{ $brand->name }}</option>
+                                        <option value="{{ $brand->id }}" {{ old('brand_id', $product->brand_id) == $brand->id ? 'selected' : '' }}>{{ $brand->name }}</option>
                                     @endforeach
                                 </select>
-                                @error('brand_id')
-                                    <span class="alert alert-danger d-block mt-2">{{ $message }}</span>
-                                @enderror
+                                @error('brand_id')<span class="alert alert-danger d-block mt-2">{{ $message }}</span>@enderror
+                            </fieldset>
+                        </div>
+                    </div>
+
+                    <div class="row gap-3 mb-4">
+                        <div class="col-md-6">
+                            <fieldset>
+                                <div class="body-title mb-10">Featured Product</div>
+                                <select class="form-control" name="featured">
+                                    <option value="0" {{ old('featured', $product->featured) == '0' ? 'selected' : '' }}>No</option>
+                                    <option value="1" {{ old('featured', $product->featured) == '1' ? 'selected' : '' }}>Yes</option>
+                                </select>
+                            </fieldset>
+                        </div>
+                        <div class="col-md-6">
+                            <fieldset>
+                                <div class="body-title mb-10">Stock Status (auto-managed)</div>
+                                <input type="text" class="form-control" readonly
+                                    value="{{ $product->stock_status === 'instock' ? 'In Stock' : 'Out of Stock' }}"
+                                    style="background:#f8f9fa;">
+                                <small class="text-muted">Derived from variant stock quantities</small>
                             </fieldset>
                         </div>
                     </div>
 
                     <fieldset class="mb-4">
                         <div class="body-title mb-10">Short Description <span class="tf-color-1">*</span></div>
-                        <textarea class="form-control" rows="3" name="short_description"
-                            placeholder="Short product description" aria-required="true"
-                            required="">{{ $product->short_description }}</textarea>
-                        <small class="text-muted">Brief overview of the product</small>
-                        @error('short_description')
-                            <span class="alert alert-danger d-block mt-2">{{ $message }}</span>
-                        @enderror
+                        <textarea class="form-control" rows="3" name="short_description" required>{{ old('short_description', $product->short_description) }}</textarea>
+                        @error('short_description')<span class="alert alert-danger d-block mt-2">{{ $message }}</span>@enderror
                     </fieldset>
 
                     <fieldset class="mb-4">
                         <div class="body-title mb-10">Full Description <span class="tf-color-1">*</span></div>
-                        <textarea class="form-control" rows="5" name="description"
-                            placeholder="Detailed product description" aria-required="true"
-                            required="">{{ $product->description }}</textarea>
-                        <small class="text-muted">Complete details about the product</small>
-                        @error('description')
-                            <span class="alert alert-danger d-block mt-2">{{ $message }}</span>
-                        @enderror
+                        <textarea class="form-control" rows="5" name="description" required>{{ old('description', $product->description) }}</textarea>
+                        @error('description')<span class="alert alert-danger d-block mt-2">{{ $message }}</span>@enderror
                     </fieldset>
                 </div>
 
@@ -116,32 +101,30 @@
                     <h4 class="mb-3">Product Images</h4>
 
                     <fieldset class="mb-4">
-                        <div class="body-title mb-10">Featured Image <span class="tf-color-1">*</span></div>
+                        <div class="body-title mb-10">Featured Image</div>
                         <div class="upload-image flex-grow">
                             @if($product->image)
-                                <div class="item" id="imgpreview" style="position: relative;">
-                                    <img src="{{ asset('uploads/products/thumbnails/' . $product->image) }}" class="effect8 img-thumbnail" alt="{{ $product->name }}" style="max-width: 200px;">
-                                    <button type="button" class="btn btn-sm btn-danger rounded-circle remove-img-main position-absolute shadow-sm" style="top: -8px; right: -8px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 14px; line-height: 1;">&times;</button>
+                                <div class="item" id="imgpreview" style="position:relative;">
+                                    <img src="{{ asset('uploads/products/thumbnails/' . $product->image) }}" class="effect8 img-thumbnail" alt="" style="max-width:200px;">
+                                    <button type="button" class="btn btn-sm btn-danger rounded-circle remove-img-main position-absolute shadow-sm"
+                                        style="top:-8px;right:-8px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;padding:0;font-size:14px;">&times;</button>
                                 </div>
                             @else
-                                <div class="item" id="imgpreview" style="display:none; position: relative;">
-                                    <img src="" class="effect8 img-thumbnail" alt="" style="max-width: 200px;">
-                                    <button type="button" class="btn btn-sm btn-danger rounded-circle remove-img-main position-absolute shadow-sm" style="top: -8px; right: -8px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 14px; line-height: 1;">&times;</button>
+                                <div class="item" id="imgpreview" style="display:none;position:relative;">
+                                    <img src="" class="effect8 img-thumbnail" alt="" style="max-width:200px;">
+                                    <button type="button" class="btn btn-sm btn-danger rounded-circle remove-img-main position-absolute shadow-sm"
+                                        style="top:-8px;right:-8px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;padding:0;font-size:14px;">&times;</button>
                                 </div>
                             @endif
                             <div id="upload-file" class="item up-load" @if($product->image) style="display:none;" @endif>
                                 <label class="uploadfile" for="myFile">
-                                    <span class="icon">
-                                        <i class="icon-upload-cloud"></i>
-                                    </span>
+                                    <span class="icon"><i class="icon-upload-cloud"></i></span>
                                     <span class="body-text">Drop your image here or <span class="tf-color">click to browse</span></span>
                                     <input type="file" id="myFile" name="image" accept="image/*">
                                 </label>
                             </div>
                         </div>
-                        @error('image')
-                            <span class="alert alert-danger d-block mt-2">{{ $message }}</span>
-                        @enderror
+                        @error('image')<span class="alert alert-danger d-block mt-2">{{ $message }}</span>@enderror
                     </fieldset>
 
                     <fieldset>
@@ -150,265 +133,229 @@
                             @if($product->images)
                                 @foreach(explode(',', $product->images) as $img)
                                     @if(trim($img))
-                                        <div class="item gitems" style="position: relative;">
-                                            <img src="{{ asset('uploads/products/thumbnails/' . trim($img)) }}" class="effect8 img-thumbnail" alt="" style="max-width: 100px;">
-                                            <button type="button" class="btn btn-sm btn-danger rounded-circle remove-img position-absolute shadow-sm" style="top: -8px; right: -8px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 14px; line-height: 1;" data-filename="{{ trim($img) }}">&times;</button>
+                                        <div class="item gitems" style="position:relative;">
+                                            <img src="{{ asset('uploads/products/thumbnails/' . trim($img)) }}" class="effect8 img-thumbnail" alt="" style="max-width:100px;">
+                                            <button type="button" class="btn btn-sm btn-danger rounded-circle remove-img position-absolute shadow-sm"
+                                                style="top:-8px;right:-8px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;padding:0;font-size:14px;"
+                                                data-filename="{{ trim($img) }}">&times;</button>
                                         </div>
                                     @endif
                                 @endforeach
                             @endif
-                            <!-- Hidden field to track current gallery images -->
                             <input type="hidden" id="current-images-field" name="current_images" value="">
                             <div id="galUpload" class="item up-load">
                                 <label class="uploadfile" for="gFile">
-                                    <span class="icon">
-                                        <i class="icon-upload-cloud"></i>
-                                    </span>
+                                    <span class="icon"><i class="icon-upload-cloud"></i></span>
                                     <span class="text-tiny">Drop images here or <span class="tf-color">click to browse</span></span>
-                                    <input type="file" id="gFile" name="images[]" accept="image/*" multiple="">
+                                    <input type="file" id="gFile" name="images[]" accept="image/*" multiple>
                                 </label>
                             </div>
                         </div>
-                        @error('images')
-                            <span class="alert alert-danger d-block mt-2">{{ $message }}</span>
-                        @enderror
                     </fieldset>
                 </div>
 
-                <!-- Pricing -->
+                <!-- Variants -->
                 <div class="wg-box">
-                    <h4 class="mb-3">Pricing</h4>
-
-                    <div class="row gap-3 mb-4">
-                        <div class="col-md-6">
-                            <fieldset>
-                                <div class="body-title mb-10">Regular Price <span class="tf-color-1">*</span></div>
-                                <input class="form-control" type="number" placeholder="Enter regular price" step="0.01"
-                                    name="regular_price" value="{{ $product->regular_price }}" aria-required="true"
-                                    required="">
-                                @error('regular_price')
-                                    <span class="alert alert-danger d-block mt-2">{{ $message }}</span>
-                                @enderror
-                            </fieldset>
-                        </div>
-                        <div class="col-md-6">
-                            <fieldset>
-                                <div class="body-title mb-10">Sale Price <span class="tf-color-1">*</span></div>
-                                <input class="form-control" type="number" placeholder="Enter sale price" step="0.01"
-                                    name="sale_price" value="{{ $product->sale_price }}" aria-required="true"
-                                    required="">
-                                @error('sale_price')
-                                    <span class="alert alert-danger d-block mt-2">{{ $message }}</span>
-                                @enderror
-                            </fieldset>
-                        </div>
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h4 class="mb-0">Product Variants <span class="tf-color-1">*</span></h4>
+                        <button type="button" class="tf-button btn-sm" id="addVariantBtn">+ Add Variant</button>
                     </div>
 
-                    <div class="row gap-3 mb-4">
-                        <div class="col-md-6">
-                            <fieldset>
-                                <div class="body-title mb-10">Stock Status <span class="tf-color-1">*</span></div>
-                                <select class="form-control" name="stock_status" required="">
-                                    <option value="">-- Choose Status --</option>
-                                    <option value="instock" {{ $product->stock_status == 'instock' ? 'selected' : '' }}>In Stock</option>
-                                    <option value="outofstock" {{ $product->stock_status == 'outofstock' ? 'selected' : '' }}>Out of Stock</option>
-                                </select>
-                                @error('stock_status')
-                                    <span class="alert alert-danger d-block mt-2">{{ $message }}</span>
-                                @enderror
-                            </fieldset>
-                        </div>
-                        <div class="col-md-6">
-                            <fieldset>
-                                <div class="body-title mb-10">Featured Product</div>
-                                <select class="form-control" name="featured">
-                                    <option value="0" {{ $product->featured == 0 ? 'selected' : '' }}>No</option>
-                                    <option value="1" {{ $product->featured == 1 ? 'selected' : '' }}>Yes</option>
-                                </select>
-                                @error('featured')
-                                    <span class="alert alert-danger d-block mt-2">{{ $message }}</span>
-                                @enderror
-                            </fieldset>
-                        </div>
-                    </div>
-                </div>
+                    @error('variants')<div class="alert alert-danger mb-3">{{ $message }}</div>@enderror
 
-                <!-- Product Variants/Sizes -->
-                <div class="wg-box">
-                    <h4 class="mb-3">Product Sizes/Variants</h4>
-                    <p class="text-muted mb-3">Edit up to 5 size variants. You can also manage quantities from the <a href="{{ route('admin.product.quantity') }}" class="text-primary">Quantity Management</a> page.</p>
-
-                    <fieldset class="mb-4">
-                        <div class="body-title mb-10">Unit</div>
-                        <select class="form-control" name="unit" id="unit">
-                            <option value="KG" {{ $product->sizes()->first()?->unit == 'KG' ? 'selected' : 'selected' }}>KG (Kilogram)</option>
-                            <option value="LB" {{ $product->sizes()->first()?->unit == 'LB' ? 'selected' : '' }}>LB (Pound)</option>
-                            <option value="G" {{ $product->sizes()->first()?->unit == 'G' ? 'selected' : '' }}>G (Gram)</option>
-                            <option value="ML" {{ $product->sizes()->first()?->unit == 'ML' ? 'selected' : '' }}>ML (Milliliter)</option>
-                            <option value="L" {{ $product->sizes()->first()?->unit == 'L' ? 'selected' : '' }}>L (Liter)</option>
-                            <option value="PCS" {{ $product->sizes()->first()?->unit == 'PCS' ? 'selected' : '' }}>PCS (Pieces)</option>
-                        </select>
-                    </fieldset>
-
-                    <div id="sizes-container">
-                        @for($i = 0; $i < 5; $i++)
-                            @php
-                                $size = $product->sizes()->skip($i)->first();
-                            @endphp
-                            <div class="size-row mb-3 p-3 bg-light rounded border">
-                                <div class="row g-3">
-                                    <div class="col-md-3">
-                                        <label class="form-label fw-500">Size {{ $i + 1 }} Value</label>
-                                        <div class="input-group">
-                                            <input type="number" class="form-control size-value" name="size_values[]" 
-                                                placeholder="e.g., 5, 7, 9" step="0.5" value="{{ $size?->size_value ?? '' }}">
-                                            <span class="input-group-text" id="unit-display">{{ $product->sizes()->first()?->unit ?? 'KG' }}</span>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label fw-500">Quantity</label>
-                                        <input type="number" class="form-control size-quantity" name="size_quantities[]" 
-                                            placeholder="Enter quantity" min="0" value="{{ $size?->quantity ?? '' }}">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label fw-500">Regular Price</label>
-                                        <input type="number" class="form-control size-regular-price" name="size_regular_prices[]" 
-                                            placeholder="Enter regular price" step="0.01" value="{{ $size?->regular_price ?? '' }}">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label fw-500">Sale Price</label>
-                                        <input type="number" class="form-control size-sale-price" name="size_sale_prices[]" 
-                                            placeholder="Enter sale price (optional)" step="0.01" value="{{ $size?->sale_price ?? '' }}">
-                                    </div>
+                    <div id="variants-container">
+                        @foreach($product->variants as $idx => $variant)
+                        <div class="variant-row border rounded p-3 mb-3 bg-light position-relative">
+                            <button type="button" class="btn btn-sm btn-danger rounded-circle remove-variant-btn position-absolute"
+                                style="top:-10px;right:-10px;width:26px;height:26px;padding:0;font-size:14px;">&times;</button>
+                            <input type="hidden" name="variants[{{ $idx }}][id]" value="{{ $variant->id }}">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label fw-500">Variant Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="variants[{{ $idx }}][variant_name]" value="{{ $variant->variant_name }}" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-500">Weight</label>
+                                    <input type="number" class="form-control" name="variants[{{ $idx }}][weight]" value="{{ $variant->weight }}" step="0.01" min="0">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-500">Unit <span class="text-danger">*</span></label>
+                                    <select class="form-control" name="variants[{{ $idx }}][unit]" required>
+                                        @foreach(['KG','G','LB','PCS','BOX','L'] as $u)
+                                            <option value="{{ $u }}" {{ $variant->unit === $u ? 'selected' : '' }}>{{ $u }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-500">Price (Rs) <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" name="variants[{{ $idx }}][price]" value="{{ $variant->price }}" step="0.01" min="0" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-500">Compare Price</label>
+                                    <input type="number" class="form-control" name="variants[{{ $idx }}][compare_price]" value="{{ $variant->compare_price }}" step="0.01" min="0">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-500">Cost Price</label>
+                                    <input type="number" class="form-control" name="variants[{{ $idx }}][cost_price]" value="{{ $variant->cost_price }}" step="0.01" min="0">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-500">Stock Qty <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" name="variants[{{ $idx }}][stock_qty]" value="{{ $variant->stock_qty }}" min="0" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-500">Low Stock Alert</label>
+                                    <input type="number" class="form-control" name="variants[{{ $idx }}][low_stock_alert]" value="{{ $variant->low_stock_alert }}" min="0">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-500">SKU</label>
+                                    <input type="text" class="form-control" name="variants[{{ $idx }}][sku]" value="{{ $variant->sku }}">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-500">Barcode</label>
+                                    <input type="text" class="form-control" name="variants[{{ $idx }}][barcode]" value="{{ $variant->barcode }}">
                                 </div>
                             </div>
-                        @endfor
-                    </div>
-                    <small class="text-muted d-block mt-2"><i class="fas fa-info-circle"></i> Leave size fields blank for unused slots.</small>
-                </div>
-
-                <!-- SKU Information -->
-                <div class="wg-box" style="background-color: #f8f9fa; border-left: 4px solid #4CAF50;">
-                    <h4 class="mb-3"><i class="fas fa-key" style="color: #4CAF50;"></i> Product SKU</h4>
-                    <div class="alert alert-info mb-0">
-                        <p class="mb-0"><strong>Auto-Generated SKU:</strong> <code>{{ $product->SKU }}</code></p>
+                        </div>
+                        @endforeach
                     </div>
                 </div>
 
-                <!-- Submit Button -->
+                <!-- Submit -->
                 <div class="wg-box">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <button class="tf-button w-full" type="submit" style="background-color: #4CAF50; border-color: #4CAF50;">
-                                <i class="fas fa-save"></i> Update Product
-                            </button>
+                            <button class="tf-button w-full" type="submit">Update Product</button>
                         </div>
                         <div class="col-md-6">
-                            <a href="{{ route('admin.products') }}" class="tf-button w-full" style="background-color: #6c757d; border-color: #6c757d; text-decoration: none;">
-                                <i class="fas fa-times"></i> Cancel
-                            </a>
+                            <a href="{{ route('admin.products') }}" class="tf-button w-full" style="background:#6c757d;border-color:#6c757d;text-decoration:none;">Cancel</a>
                         </div>
                     </div>
                 </div>
             </form>
         </div>
     </div>
+
+    <template id="variant-row-tpl">
+        <div class="variant-row border rounded p-3 mb-3 bg-light position-relative">
+            <button type="button" class="btn btn-sm btn-danger rounded-circle remove-variant-btn position-absolute"
+                style="top:-10px;right:-10px;width:26px;height:26px;padding:0;font-size:14px;">&times;</button>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-500">Variant Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="variants[__IDX__][variant_name]" placeholder="e.g. 1 KG Box" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-500">Weight</label>
+                    <input type="number" class="form-control" name="variants[__IDX__][weight]" placeholder="1.5" step="0.01" min="0">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-500">Unit <span class="text-danger">*</span></label>
+                    <select class="form-control" name="variants[__IDX__][unit]" required>
+                        <option value="KG">KG</option>
+                        <option value="G">G</option>
+                        <option value="LB">LB</option>
+                        <option value="PCS">PCS</option>
+                        <option value="BOX">BOX</option>
+                        <option value="L">L</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-500">Price (Rs) <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" name="variants[__IDX__][price]" placeholder="0.00" step="0.01" min="0" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-500">Compare Price</label>
+                    <input type="number" class="form-control" name="variants[__IDX__][compare_price]" placeholder="0.00" step="0.01" min="0">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-500">Cost Price</label>
+                    <input type="number" class="form-control" name="variants[__IDX__][cost_price]" placeholder="0.00" step="0.01" min="0">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-500">Stock Qty <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" name="variants[__IDX__][stock_qty]" placeholder="0" min="0" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-500">Low Stock Alert</label>
+                    <input type="number" class="form-control" name="variants[__IDX__][low_stock_alert]" value="5" min="0">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-500">SKU</label>
+                    <input type="text" class="form-control" name="variants[__IDX__][sku]" placeholder="Auto-generated">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-500">Barcode</label>
+                    <input type="text" class="form-control" name="variants[__IDX__][barcode]" placeholder="Optional">
+                </div>
+            </div>
+        </div>
+    </template>
 @endsection
 
-@push("scripts")
-    <script>
-        $(function(){
-            // Dynamic slug generation from product name
-            $('input[name="name"]').on('keyup change', function() {
-                const name = $(this).val().trim();
-                if(name) {
-                    const slug = name.toLowerCase()
-                        .replace(/[^\w\s-]/g, '')
-                        .replace(/\s+/g, '-')
-                        .replace(/-+/g, '-')
-                        .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
-                    
-                    $('input[name="slug"]').val(slug);
-                }
-            });
+@push('scripts')
+<script>
+$(function(){
+    let variantIdx = {{ $product->variants->count() }};
 
-            // Trigger slug generation on page load if name field has value
-            const nameInput = $('input[name="name"]');
-            if(nameInput.val().trim()) {
-                nameInput.trigger('keyup');
-            }
+    function addVariantRow() {
+        const html = document.getElementById('variant-row-tpl').innerHTML.replace(/__IDX__/g, variantIdx);
+        $('#variants-container').append(html);
+        variantIdx++;
+    }
 
-            // Update unit display in size inputs when unit changes
-            $('#unit').on('change', function() {
-                const unit = $(this).val();
-                $('#unit-display').text(unit || 'Unit');
-            });
+    $('#addVariantBtn').on('click', addVariantRow);
 
-            // Set initial unit display
-            $('#unit-display').text($('#unit').val() || 'Unit');
+    $(document).on('click', '.remove-variant-btn', function() {
+        if ($('.variant-row').length > 1) {
+            $(this).closest('.variant-row').remove();
+        } else {
+            alert('At least one variant is required.');
+        }
+    });
 
-            // Main image preview
-            $("#myFile").on("change",function(e){
-                const [file] = this.files;
-                if (file) {
-                    $("#imgpreview img").attr('src',URL.createObjectURL(file));
-                    $("#imgpreview").show();
-                    $("#upload-file").hide();
-                }
-            }); 
+    // Main image
+    $('#myFile').on('change', function() {
+        const [file] = this.files;
+        if (file) { $('#imgpreview img').attr('src', URL.createObjectURL(file)); $('#imgpreview').show(); $('#upload-file').hide(); }
+    });
+    $(document).on('click', '.remove-img-main', function() {
+        $('#imgpreview').hide(); $('#imgpreview img').attr('src', ''); $('#myFile').val(''); $('#upload-file').show();
+    });
 
-            // Remove main image
-            $(document).on('click', '.remove-img-main', function() {
-                $("#imgpreview").hide();
-                $("#imgpreview img").attr('src', '');
-                $("#myFile").val('');
-                $("#upload-file").show();
-            });
+    // Gallery
+    const gdt = new DataTransfer();
+    function updateCurrentImagesField() {
+        const imgs = [];
+        $('.gitems').each(function() { const fn = $(this).find('.remove-img').data('filename'); if(fn) imgs.push(fn); });
+        $('#current-images-field').val(JSON.stringify(imgs));
+    }
+    updateCurrentImagesField();
 
-            // Gallery images - Initialize with existing images
-            const gdt = new DataTransfer();
-            const existingImages = {{ json_encode(explode(',', $product->images ?? '')) }};
-            
-            // Track current images for deletion
-            function updateCurrentImagesField() {
-                const images = [];
-                $('.gitems').each(function() {
-                    const filename = $(this).find('.remove-img').data('filename');
-                    if(filename) images.push(filename);
-                });
-                $('#current-images-field').val(JSON.stringify(images));
-            }
-            updateCurrentImagesField();
-
-            $("#gFile").on("change",function(e){                   
-               $.each(this.files, function(index, file) {
-                    gdt.items.add(file);
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const img = $('<img>').attr('src', e.target.result).addClass('effect8 img-thumbnail').css('max-width', '100px');
-                        const btn = $('<button>').attr('type', 'button').addClass('btn btn-sm btn-danger rounded-circle remove-img position-absolute shadow-sm').css({
-                            top: '-8px', right: '-8px', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0', fontSize: '14px', lineHeight: '1'
-                        }).html('&times;').data('filename', file.name);
-                        const div = $('<div>').addClass('item gitems').css('position', 'relative').append(img).append(btn);
-                        $('#galUpload').before(div);                    updateCurrentImagesField();                    }
-                    reader.readAsDataURL(file);
-                });
-                this.files = gdt.files;
-            }); 
-
-            // Remove gallery image
-            $(document).on('click', '.remove-img', function(e) {
-                e.preventDefault();
-                const filename = $(this).data('filename');
-                for (let i = 0; i < gdt.items.length; i++) {
-                    if (gdt.items[i].getAsFile().name === filename) {
-                        gdt.items.remove(i);
-                        break;
-                    }
-                }
-                $(this).closest('.gitems').remove();
+    $('#gFile').on('change', function() {
+        $.each(this.files, function(i, file) {
+            gdt.items.add(file);
+            const reader = new FileReader();
+            reader.onload = e => {
+                const img = $('<img>').attr('src', e.target.result).addClass('effect8 img-thumbnail').css('max-width','100px');
+                const btn = $('<button>').attr('type','button').addClass('btn btn-sm btn-danger rounded-circle remove-img position-absolute shadow-sm')
+                    .css({top:'-8px',right:'-8px',width:'24px',height:'24px',display:'flex',alignItems:'center',justifyContent:'center',padding:'0',fontSize:'14px'})
+                    .html('&times;').data('filename', file.name);
+                $('#galUpload').before($('<div>').addClass('item gitems').css('position','relative').append(img).append(btn));
                 updateCurrentImagesField();
-            });
+            };
+            reader.readAsDataURL(file);
         });
-    </script>
+        this.files = gdt.files;
+    });
+    $(document).on('click', '.remove-img', function(e) {
+        e.preventDefault();
+        const fn = $(this).data('filename');
+        for (let i = 0; i < gdt.items.length; i++) {
+            if (gdt.items[i].getAsFile().name === fn) { gdt.items.remove(i); break; }
+        }
+        $(this).closest('.gitems').remove();
+        updateCurrentImagesField();
+    });
+});
+</script>
 @endpush

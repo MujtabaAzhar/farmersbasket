@@ -57,6 +57,13 @@
       padding: 0.625rem 1.5rem .25rem !important;
       color: #000 !important;
     }
+    .order-timeline { position: relative; padding-left: 2rem; }
+    .order-timeline::before { content: ''; position: absolute; left: .55rem; top: 0; bottom: 0; width: 2px; background: #dee2e6; }
+    .order-timeline-item { position: relative; margin-bottom: 1.25rem; }
+    .order-timeline-item::before { content: ''; position: absolute; left: -1.5rem; top: .3rem; width: 12px; height: 12px; border-radius: 50%; background: #6c757d; border: 2px solid #fff; box-shadow: 0 0 0 2px #6c757d; }
+    .order-timeline-item.done::before { background: #40c710; box-shadow: 0 0 0 2px #40c710; }
+    .order-timeline-item.canceled::before { background: #f44032; box-shadow: 0 0 0 2px #f44032; }
+    .order-timeline-item.returned::before { background: #fd7e14; box-shadow: 0 0 0 2px #fd7e14; }
 
     .table> :not(caption)>tr>th {
       padding: 0.625rem 1.5rem .25rem !important;
@@ -133,7 +140,7 @@
                                            
                                                 <tr>
                                                     <th>Order No</th>
-                                                    <td>{{ $order->id }}</td>
+                                                    <td>{{ $order->order_number }}</td>
                                                       <th>Phone</th>
                                                     <td>{{ $order->phone }}</td>
                                                       <th>Zip Code</th>
@@ -150,20 +157,27 @@
                                                  
                                                 </tr>
                                                 <tr>
-                                                    <th>
-                                                        Order Status
-                                                    </th>
-                                                    <td colspan="5">
-                                                        @if($order->status == 'ordered')
-                                                        <span class="badge bg-warning">Pending</span>
-                                                        @elseif($order->status == 'delivered')
-                                                        <span class="badge bg-success">Delivered</span>
-                                                        @elseif($order->status == 'canceled')
-                                                        <span class="badge bg-danger">Canceled</span>
-                                                        @endif
-                                                        
+                                                    <th>Order Status</th>
+                                                    <td colspan="2">
+                                                        @php
+                                                            $statusLabels = ['ordered'=>'Pending','confirmed'=>'Confirmed','packed'=>'Packed','shipped'=>'Shipped','delivered'=>'Delivered','canceled'=>'Canceled','returned'=>'Returned'];
+                                                            $statusColors = ['ordered'=>'warning','confirmed'=>'info','packed'=>'secondary','shipped'=>'primary','delivered'=>'success','canceled'=>'danger','returned'=>'dark'];
+                                                        @endphp
+                                                        <span class="badge bg-{{ $statusColors[$order->status] ?? 'secondary' }}">{{ $statusLabels[$order->status] ?? ucfirst($order->status) }}</span>
                                                     </td>
+                                                    @if($order->tracking_number)
+                                                    <th>Tracking #</th>
+                                                    <td colspan="2">{{ $order->tracking_number }} @if($order->courier_name)<small class="text-muted">({{ $order->courier_name }})</small>@endif</td>
+                                                    @else
+                                                    <td colspan="3"></td>
+                                                    @endif
                                                 </tr>
+                                                @if($order->estimated_delivery_date && !in_array($order->status, ['delivered','canceled','returned']))
+                                                <tr>
+                                                    <th>Est. Delivery</th>
+                                                    <td colspan="5">{{ \Carbon\Carbon::parse($order->estimated_delivery_date)->format('d M Y') }}</td>
+                                                </tr>
+                                                @endif
                                            
                                    
                                         </table>
@@ -285,6 +299,30 @@
                                         </tbody>
                                     </table>
                                 </div>
+                                @if($order->histories->where('is_admin_note', false)->count())
+                                <div class="wg-box mt-5">
+                                    <h5>Order Timeline</h5>
+                                    <div class="order-timeline mt-3">
+                                        @foreach($order->histories->where('is_admin_note', false) as $history)
+                                        @php
+                                            $itemCls = in_array($history->status, ['delivered']) ? 'done'
+                                                : ($history->status === 'canceled' ? 'canceled'
+                                                : ($history->status === 'returned' ? 'returned' : ''));
+                                        @endphp
+                                        <div class="order-timeline-item {{ $itemCls }}">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <span class="fw-semibold">{{ $statusLabels[$history->status] ?? ucfirst($history->status) }}</span>
+                                                <small class="text-muted ms-3 text-nowrap">{{ $history->created_at->format('d M Y H:i') }}</small>
+                                            </div>
+                                            @if($history->note)
+                                                <p class="text-muted small mb-0 mt-1">{{ $history->note }}</p>
+                                            @endif
+                                        </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                @endif
+
                                     @if ($order->status == 'ordered')
                                 <div class="wg-box mt-5 text-right">
                                     <form action="{{ route('user.order.cancel') }}" method="POST">

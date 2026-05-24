@@ -151,16 +151,104 @@
                                         <div class="text">Messages</div>
                                     </a>
                                 </li>
+                                <li class="menu-item">
+                                    <a href="{{ route('admin.reviews') }}" class="">
+                                        <div class="icon"><i class="icon-star"></i></div>
+                                        <div class="text">Reviews</div>
+                                    </a>
+                                </li>
+
+                                <li class="menu-item has-children">
+                                    <a href="javascript:void(0);" class="menu-item-button">
+                                        <div class="icon"><i class="icon-package"></i></div>
+                                        <div class="text">Inventory</div>
+                                    </a>
+                                    <ul class="sub-menu">
+                                        <li class="sub-menu-item">
+                                            <a href="{{ route('admin.inventory') }}" class="">
+                                                <div class="text">Stock Levels</div>
+                                            </a>
+                                        </li>
+                                        <li class="sub-menu-item">
+                                            <a href="{{ route('admin.warehouses') }}" class="">
+                                                <div class="text">Warehouses</div>
+                                            </a>
+                                        </li>
+                                        <li class="sub-menu-item">
+                                            <a href="{{ route('admin.stock.transfers') }}" class="">
+                                                <div class="text">Stock Transfers</div>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <li class="menu-item has-children">
+                                    <a href="javascript:void(0);" class="menu-item-button">
+                                        <div class="icon"><i class="icon-truck"></i></div>
+                                        <div class="text">Shipping</div>
+                                    </a>
+                                    <ul class="sub-menu">
+                                        <li class="sub-menu-item">
+                                            <a href="{{ route('admin.dispatch.index') }}" class="{{ request()->routeIs('admin.dispatch.*') ? 'active' : '' }}">
+                                                <div class="text">Dispatch Board</div>
+                                            </a>
+                                        </li>
+                                        <li class="sub-menu-item">
+                                            <a href="{{ route('admin.shipments.index') }}" class="{{ request()->routeIs('admin.shipments.*') ? 'active' : '' }}">
+                                                <div class="text">All Shipments</div>
+                                            </a>
+                                        </li>
+                                        <li class="sub-menu-item">
+                                            <a href="{{ route('admin.couriers.index') }}" class="{{ request()->routeIs('admin.couriers.*') ? 'active' : '' }}">
+                                                <div class="text">Courier Services</div>
+                                            </a>
+                                        </li>
+                                        <li class="sub-menu-item">
+                                            <a href="{{ route('admin.riders.index') }}" class="{{ request()->routeIs('admin.riders.*') ? 'active' : '' }}">
+                                                <div class="text">Riders</div>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <li class="menu-item has-children">
+                                    <a href="javascript:void(0);" class="menu-item-button">
+                                        <div class="icon"><i class="icon-monitor"></i></div>
+                                        <div class="text">POS Management</div>
+                                    </a>
+                                    <ul class="sub-menu">
+                                        <li class="sub-menu-item">
+                                            <a href="{{ route('admin.branches') }}" class="">
+                                                <div class="text">Branches</div>
+                                            </a>
+                                        </li>
+                                        <li class="sub-menu-item">
+                                            <a href="{{ route('admin.cashiers') }}" class="">
+                                                <div class="text">Cashiers</div>
+                                            </a>
+                                        </li>
+                                        <li class="sub-menu-item">
+                                            <a href="{{ route('admin.pos.sessions') }}" class="">
+                                                <div class="text">POS Sessions</div>
+                                            </a>
+                                        </li>
+                                        <li class="sub-menu-item">
+                                            <a href="{{ route('admin.login.activity') }}" class="">
+                                                <div class="text">Login Activity</div>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
 
                                 <li class="menu-item">
-                                    <a href="users.html" class="">
+                                    <a href="{{ route('admin.customers') }}" class="{{ request()->routeIs('admin.customers','admin.customer.detail') ? 'active' : '' }}">
                                         <div class="icon"><i class="icon-user"></i></div>
-                                        <div class="text">User</div>
+                                        <div class="text">Customers</div>
                                     </a>
                                 </li>
 
                                 <li class="menu-item">
-                                    <a href="settings.html" class="">
+                                    <a href="{{ route('admin.settings') }}" class="{{ request()->routeIs('admin.settings') ? 'active' : '' }}">
                                         <div class="icon"><i class="icon-settings"></i></div>
                                         <div class="text">Settings</div>
                                     </a>
@@ -174,10 +262,10 @@
                     <div class="header-dashboard">
                         <div class="wrap">
                             <div class="header-left">
-                                <a href="index-2.html">
-                                    <img class="" id="logo_header_mobile" alt="" src="images/logo/logo.png"
-                                        data-light="images/logo/logo.png" data-dark="images/logo/logo.png"
-                                        data-width="154px" data-height="52px" data-retina="images/logo/logo.png">
+                                <a href="{{ route('admin.index') }}">
+                                    <img class="" id="logo_header_mobile" alt="" src="{{ asset('images/logo/logo.png') }}"
+                                        data-light="{{ asset('images/logo/logo.png') }}" data-dark="{{ asset('images/logo/logo.png') }}"
+                                        data-width="154px" data-height="52px" data-retina="{{ asset('images/logo/logo.png') }}">
                                 </a>
                                 <div class="button-show-hide">
                                     <i class="icon-menu-left"></i>
@@ -205,66 +293,31 @@
                                 <div class="popup-wrap message type-header">
                                     <div class="dropdown">
                                         <button class="btn btn-secondary dropdown-toggle" type="button"
-                                            id="dropdownMenuButton2" data-bs-toggle="dropdown" aria-expanded="false">
-                                            <span class="header-item">
-                                                <span class="text-tiny">1</span>
-                                                <i class="icon-bell"></i>
+                                            id="dropdownMenuButton2" data-bs-toggle="dropdown" aria-expanded="false"
+                                            onclick="loadNotifications()">
+                                            <span class="header-item" style="position:relative;">
+                                                <span id="notif-badge" class="text-tiny"
+                                                      style="display:none;position:absolute;top:-6px;right:-6px;background:#e74c3c;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;display:none;align-items:center;justify-content:center;font-weight:700;">0</span>
+                                                <i class="icon-bell" id="notif-bell"></i>
                                             </span>
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end has-content"
-                                            aria-labelledby="dropdownMenuButton2">
-                                            <li>
-                                                <h6>Notifications</h6>
+                                            id="notif-dropdown"
+                                            aria-labelledby="dropdownMenuButton2"
+                                            style="min-width:320px;max-height:480px;overflow-y:auto;padding:0;">
+                                            <li style="padding:10px 16px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1;">
+                                                <h6 style="margin:0;font-size:14px;font-weight:700;">Notifications</h6>
+                                                <button id="btn-mark-all" onclick="markAllRead()"
+                                                        style="display:none;background:none;border:none;color:#2ecc71;font-size:11px;font-weight:600;cursor:pointer;padding:0;">
+                                                    Mark all read
+                                                </button>
                                             </li>
-                                            <li>
-                                                <div class="message-item item-1">
-                                                    <div class="image">
-                                                        <i class="icon-noti-1"></i>
-                                                    </div>
-                                                    <div>
-                                                        <div class="body-title-2">Discount available</div>
-                                                        <div class="text-tiny">Morbi sapien massa, ultricies at rhoncus
-                                                            at, ullamcorper nec diam</div>
-                                                    </div>
-                                                </div>
+                                            <div id="notif-list" style="min-height:80px;">
+                                                <div style="text-align:center;padding:24px;color:#aaa;font-size:13px;">Loading...</div>
+                                            </div>
+                                            <li style="padding:8px 12px;border-top:1px solid #eee;position:sticky;bottom:0;background:#fff;">
+                                                <a href="{{ route('admin.notifications.page') }}" class="tf-button w-full" style="display:block;text-align:center;">View all notifications</a>
                                             </li>
-                                            <li>
-                                                <div class="message-item item-2">
-                                                    <div class="image">
-                                                        <i class="icon-noti-2"></i>
-                                                    </div>
-                                                    <div>
-                                                        <div class="body-title-2">Account has been verified</div>
-                                                        <div class="text-tiny">Mauris libero ex, iaculis vitae rhoncus
-                                                            et</div>
-                                                    </div>
-                                                </div>
-                                            </li>
-                                            <li>
-                                                <div class="message-item item-3">
-                                                    <div class="image">
-                                                        <i class="icon-noti-3"></i>
-                                                    </div>
-                                                    <div>
-                                                        <div class="body-title-2">Order shipped successfully</div>
-                                                        <div class="text-tiny">Integer aliquam eros nec sollicitudin
-                                                            sollicitudin</div>
-                                                    </div>
-                                                </div>
-                                            </li>
-                                            <li>
-                                                <div class="message-item item-4">
-                                                    <div class="image">
-                                                        <i class="icon-noti-4"></i>
-                                                    </div>
-                                                    <div>
-                                                        <div class="body-title-2">Order pending: <span>ID 305830</span>
-                                                        </div>
-                                                        <div class="text-tiny">Ultricies at rhoncus at ullamcorper</div>
-                                                    </div>
-                                                </div>
-                                            </li>
-                                            <li><a href="#" class="tf-button w-full">View all</a></li>
                                         </ul>
                                     </div>
                                 </div>
@@ -281,7 +334,7 @@
                                                     <img src="images/avatar/user-1.png" alt="">
                                                 </span>
                                                 <span class="flex flex-column">
-                                                    <span class="body-title mb-2">Kristin Watson</span>
+                                                    <span class="body-title mb-2">{{ Auth::user()->name }}</span>
                                                     <span class="text-tiny">Admin</span>
                                                 </span>
                                             </span>
@@ -289,38 +342,14 @@
                                         <ul class="dropdown-menu dropdown-menu-end has-content"
                                             aria-labelledby="dropdownMenuButton3">
                                             <li>
-                                                <a href="#" class="user-item">
+                                                <a href="{{ route('admin.settings') }}" class="user-item">
                                                     <div class="icon">
-                                                        <i class="icon-user"></i>
+                                                        <i class="icon-settings"></i>
                                                     </div>
-                                                    <div class="body-title-2">Account</div>
+                                                    <div class="body-title-2">Account Settings</div>
                                                 </a>
                                             </li>
-                                            <li>
-                                                <a href="#" class="user-item">
-                                                    <div class="icon">
-                                                        <i class="icon-mail"></i>
-                                                    </div>
-                                                    <div class="body-title-2">Inbox</div>
-                                                    <div class="number">27</div>
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a href="#" class="user-item">
-                                                    <div class="icon">
-                                                        <i class="icon-file-text"></i>
-                                                    </div>
-                                                    <div class="body-title-2">Taskboard</div>
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a href="#" class="user-item">
-                                                    <div class="icon">
-                                                        <i class="icon-headphones"></i>
-                                                    </div>
-                                                    <div class="body-title-2">Support</div>
-                                                </a>
-                                            </li>
+                                           
                                             <li>
                                                 <form action="{{route('logout')}}" method="POST" id="logout-form">
                                                     @csrf
@@ -361,6 +390,121 @@
     <script src="{{ asset('js/sweetalert.min.js') }}"></script>    
     <script src="{{ asset('js/apexcharts/apexcharts.js') }}"></script>
     <script src="{{ asset('js/main.js') }}"></script>
+    @stack('scripts')
+    <script>
+    // ── Notifications ─────────────────────────────────────────────────────────
+    var notifLoaded    = false;
+    var notifLastCount = 0;
+
+    var notifIcons  = { new_order:'icon-shopping-bag', order_canceled:'icon-x-circle', new_contact:'icon-mail', new_customer:'icon-user', low_stock:'icon-alert-triangle' };
+    var notifColors = { new_order:'#2ecc71', order_canceled:'#e74c3c', new_contact:'#3498db', new_customer:'#9b59b6', low_stock:'#f39c12' };
+
+    function loadNotifications() {
+        $.getJSON('{{ route('admin.notifications.fetch') }}', function(data) {
+            notifLoaded = true;
+            var count = data.unread_count;
+            var badge = document.getElementById('notif-badge');
+            badge.textContent = count > 99 ? '99+' : count;
+            if (count > 0) {
+                badge.style.display = 'inline-flex';
+                document.getElementById('btn-mark-all').style.display = 'inline';
+            } else {
+                badge.style.display = 'none';
+                document.getElementById('btn-mark-all').style.display = 'none';
+            }
+
+            if (count > notifLastCount && notifLastCount > 0) {
+                ringBell();
+            }
+            notifLastCount = count;
+
+            var html = '';
+            if (data.notifications.length === 0) {
+                html = '<div style="text-align:center;padding:32px;color:#aaa;font-size:13px;"><i class="icon-bell" style="font-size:32px;display:block;margin-bottom:8px;opacity:.3;"></i>No notifications</div>';
+            } else {
+                data.notifications.forEach(function(n) {
+                    var icon  = notifIcons[n.type]  || 'icon-bell';
+                    var color = notifColors[n.type] || '#888';
+                    var bg    = n.is_read ? '#fff' : '#f0fdf4';
+                    var item  = '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 16px;border-bottom:1px solid #f5f5f5;background:' + bg + ';cursor:pointer;" onclick="notifClick(' + n.id + ',\'' + (n.url || '') + '\')">';
+                    item += '<div style="width:36px;height:36px;border-radius:50%;background:' + color + '20;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">';
+                    item += '<i class="' + icon + '" style="color:' + color + ';font-size:15px;"></i></div>';
+                    item += '<div style="flex:1;min-width:0;">';
+                    item += '<div style="font-size:13px;font-weight:' + (n.is_read ? '500' : '700') + ';color:#1a1f2e;line-height:1.3;">' + escHtml(n.title) + '</div>';
+                    item += '<div style="font-size:11px;color:#888;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escHtml(n.message) + '</div>';
+                    item += '<div style="font-size:10px;color:#bbb;margin-top:3px;">' + escHtml(n.time_ago) + '</div>';
+                    item += '</div>';
+                    if (!n.is_read) {
+                        item += '<span style="width:8px;height:8px;border-radius:50%;background:#2ecc71;flex-shrink:0;margin-top:6px;"></span>';
+                    }
+                    item += '</div>';
+                    html += item;
+                });
+            }
+            document.getElementById('notif-list').innerHTML = html;
+        });
+    }
+
+    function notifClick(id, url) {
+        $.post('{{ url('/admin/notifications') }}/' + id + '/read', function() {
+            if (url) window.location.href = url;
+            else loadNotifications();
+        });
+    }
+
+    function markAllRead() {
+        $.post('{{ route('admin.notifications.read.all') }}', function() {
+            loadNotifications();
+        });
+    }
+
+    function ringBell() {
+        var bell = document.getElementById('notif-bell');
+        bell.classList.add('bell-ring');
+        setTimeout(function() { bell.classList.remove('bell-ring'); }, 600);
+    }
+
+    function escHtml(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // Poll every 30 seconds for new notifications
+    function pollNotifications() {
+        $.getJSON('{{ route('admin.notifications.fetch') }}', function(data) {
+            var count = data.unread_count;
+            var badge = document.getElementById('notif-badge');
+            badge.textContent = count > 99 ? '99+' : count;
+            if (count > 0) {
+                badge.style.display = 'inline-flex';
+            } else {
+                badge.style.display = 'none';
+            }
+            if (count > notifLastCount && notifLastCount >= 0) {
+                ringBell();
+            }
+            notifLastCount = count;
+        });
+    }
+
+    $(function() {
+        // Initial badge fetch
+        pollNotifications();
+        // Poll every 30s
+        setInterval(pollNotifications, 30000);
+        // Reload list when dropdown opens
+        $('#dropdownMenuButton2').on('click', function() {
+            loadNotifications();
+        });
+    });
+    </script>
+    <style>
+    @keyframes bell-ring {
+        0%,100% { transform: rotate(0); }
+        20%,60%  { transform: rotate(-18deg); }
+        40%,80%  { transform: rotate(18deg); }
+    }
+    #notif-bell.bell-ring { animation: bell-ring 0.5s ease; display:inline-block; }
+    </style>
      <script>
     $(function(){
       $("#search-input").on("keyup", function(){

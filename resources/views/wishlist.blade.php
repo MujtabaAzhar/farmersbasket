@@ -32,7 +32,7 @@
     <!--- SHop Section -->
     <section class="shop-section position-relative z-1 fix section-padding">
         <div class="container">
-           @if(Cart::instance('wishlist')->count() > 0)
+           @if($items->count() > 0)
             <div class="row g-4">
                 <div class="col-lg-12">
                     <div class="table-cart-inner p-xxl-4 p-xl-4 p-3">
@@ -40,86 +40,93 @@
                             <table class="table m-0 align-middle table-borderless">
                                 <thead>
                                     <tr>
-                                        <th class="pb-lg-4 pb-3">
-                                            <div class="fs-18 fw-semibold text-black m-0">Products</div>
-                                        </th>
-                                        <th class="pb-lg-4 pb-3">
-                                            <div class="fs-18 fw-semibold text-black m-0">Price</div>
-                                        </th>
-                                        <th class="pb-lg-4 pb-3">
-                                            <div class="fs-18 fw-semibold text-black m-0">Quantity</div>
-                                        </th>
-                                        
-                                        <th class="pb-lg-4 pb-3">
-                                            <div class="fs-18 fw-semibold text-black m-0">Action</div>
-                                        </th>
+                                        <th class="pb-lg-4 pb-3"><div class="fs-18 fw-semibold text-black m-0">Products</div></th>
+                                        <th class="pb-lg-4 pb-3"><div class="fs-18 fw-semibold text-black m-0">Price</div></th>
+                                        <th class="pb-lg-4 pb-3"><div class="fs-18 fw-semibold text-black m-0">Action</div></th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach ($items as $item)
-                                    <tr class="border overflow-hidden rounded">
-                                        <td class="p-3">
-                                            <a href="checkout.html" class="d-flex align-items-center gap-3">
-                                                <img src="{{ asset('uploads/products/thumbnails/' . $item->model->image) }}" alt=""
-                                                    class="border rounded-2">
-                                                <h5 class="text-black max-w-180 fw-500">{{ $item->name }}</h5>
-                                            </a>
-                                        </td>
-                                        <td class="p-3">
-                                            <h5 class="theme-clr fw-500">Rs {{ $item->price }}</h5>
-                                        </td>
-                                        <td class="p-3">
-                                           <h5 class="text-black max-w-180 fw-500">    {{ $item->qty }}</h5>
-                                       
-                                        </td>
-                                       
-                                        <td class="text-center">
-                                            <div class="row">
-                        <div class="col-6">
-  <form method="POST" action="{{ route('wishlist.move_to_cart', ['rowId' => $item->rowId]) }}">
-                        @csrf
-                        <button type="submit" class="btn btn-sm theme-btn">Move to Cart</button> 
-                    </form>
-                        </div>
-                        <div class="col-6">
- <form action="{{ route('wishlist.item.remove', ['rowId' => $item->rowId]) }}" method="POST">
-                        @csrf
-                        @method('DELETE')
-                        <a href="javascript:void(0)" class="remove-cart" onclick="this.closest('form').submit()">
-                          <i
-                                                    class="fa-solid fa-xmark"></i>
-                        </a>
-                    </form>
-                        </div>
-                    </div>
-                                    
-                                        </td>
-                                    </tr>
-                                      @endforeach
-                               
+                                    @auth
+                                        {{-- DB-backed items for logged-in users --}}
+                                        @foreach ($items as $item)
+                                        <tr class="border overflow-hidden rounded">
+                                            <td class="p-3">
+                                                <a href="{{ route('shop.product.details', $item->product->slug) }}" class="d-flex align-items-center gap-3">
+                                                    <img src="{{ asset('uploads/products/thumbnails/' . $item->product->image) }}" alt="" class="border rounded-2">
+                                                    <h5 class="text-black max-w-180 fw-500">{{ $item->product->name }}</h5>
+                                                </a>
+                                            </td>
+                                            <td class="p-3">
+                                                <h5 class="theme-clr fw-500">
+                                                    @if($item->product->min_price)
+                                                        Rs {{ number_format($item->product->min_price, 0) }}+
+                                                    @else
+                                                        —
+                                                    @endif
+                                                </h5>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="d-flex gap-2 justify-content-center">
+                                                    <form method="POST" action="{{ route('wishlist.move_to_cart.product', $item->product_id) }}">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-sm theme-btn">Move to Cart</button>
+                                                    </form>
+                                                    <form action="{{ route('wishlist.remove.product', $item->product_id) }}" method="POST">
+                                                        @csrf @method('DELETE')
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-xmark"></i></button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                    @else
+                                        {{-- Session-backed items for guests --}}
+                                        @foreach ($items as $item)
+                                        <tr class="border overflow-hidden rounded">
+                                            <td class="p-3">
+                                                <a href="checkout.html" class="d-flex align-items-center gap-3">
+                                                    <img src="{{ asset('uploads/products/thumbnails/' . $item->model->image) }}" alt="" class="border rounded-2">
+                                                    <h5 class="text-black max-w-180 fw-500">{{ $item->name }}</h5>
+                                                </a>
+                                            </td>
+                                            <td class="p-3">
+                                                <h5 class="theme-clr fw-500">Rs {{ $item->price }}</h5>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="d-flex gap-2 justify-content-center">
+                                                    <form method="POST" action="{{ route('wishlist.move_to_cart', ['rowId' => $item->rowId]) }}">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-sm theme-btn">Move to Cart</button>
+                                                    </form>
+                                                    <form action="{{ route('wishlist.item.remove', ['rowId' => $item->rowId]) }}" method="POST">
+                                                        @csrf @method('DELETE')
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-xmark"></i></button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                    @endauth
                                 </tbody>
                             </table>
                         </div>
                         <div class="d-flex align-items-center gap-4 mt-4">
-                           <form action="{{ route('wishlist.empty') }}" method="POST">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="theme-btn rounded-2">CLEAR WISHLIST</button>
-            </form>
-                          
+                            <form action="{{ route('wishlist.empty') }}" method="POST">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="theme-btn rounded-2">CLEAR WISHLIST</button>
+                            </form>
                         </div>
                     </div>
                 </div>
-               
             </div>
-              @else
-              <div class="row">
-            <div class="col-md-12 text-center pt-5 bp-5">
-                <p class="mb-3">No items in your wishlist.</p>
-                <a href="{{route('shop.index')}}" class="theme-btn">Wishlist Now</a>
+            @else
+            <div class="row">
+                <div class="col-md-12 text-center pt-5 bp-5">
+                    <p class="mb-3">No items in your wishlist.</p>
+                    <a href="{{ route('shop.index') }}" class="theme-btn">Shop Now</a>
+                </div>
             </div>
-        </div>
-             @endif
+            @endif
         </div>
         <img src="assets/img/inner-global-pasta.png" alt="img"
             class="position-absolute bottom-0 pb-100 end-0 float-bob-y mt-4 z-n1 d-sm-block d-none">

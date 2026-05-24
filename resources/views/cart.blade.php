@@ -71,7 +71,12 @@
                                             <a href="checkout.html" class="d-flex align-items-center gap-3">
                                                 <img src="{{asset('uploads/products/thumbnails/' . $item->model->image)}}" width="120" height="120" alt="{{ $item->name}}"
                                                     class="border rounded-2">
-                                                <h5 class="text-black max-w-180 fw-500">{{ $item->name }}</h5>
+                                                <div>
+                                                    <h5 class="text-black max-w-180 fw-500">{{ $item->model->name }}</h5>
+                                                    @if(!empty($item->options->variant_label))
+                                                        <small class="text-muted">{{ $item->options->variant_label }}</small>
+                                                    @endif
+                                                </div>
                                             </a>
                                         </td>
                                         <td class="p-3">

@@ -43,7 +43,7 @@
                                     <img src="assets/img/icons/shop-check.png" alt="img" class="d-none"> <!-- kept for icon continuity if needed -->
                                      {{ $category->name }}
                                 </label>
-                                <span class="fs-13 text-clr">{{ $category->products->count() }}</span>
+                                <span class="fs-13 text-clr">{{ $category->products_count }}</span>
                             </div>
                              @endforeach
                         </div>
@@ -58,7 +58,7 @@
                                     <img src="assets/img/icons/shop-check.png" alt="img" class="d-none"> <!-- kept for icon continuity if needed -->
                                                {{ $brand->name }}
                                 </label>
-                                <span class="fs-13 text-clr">  {{ $brand->products->count() }}</span>
+                                <span class="fs-13 text-clr">{{ $brand->products_count }}</span>
                             </div>
                              @endforeach
                         </div>
@@ -170,14 +170,16 @@
                                                 </p>
                                                 <div class="d-flex align-items-center gap-sm-3 gap-2 flex-wrap mb-2">
                                                     <div class="d-flex align-items-center gap-1">
-                                                        @if ($product->sale_price)
-                                                            <del
-                                                                class="fs-16 text4-clr">Rs {{ $product->regular_price }}</del>
-                                                            <span
-                                                                class="theme3-clr fw-semibold fs-16">Rs {{ $product->sale_price }}</span>
+                                                        @php
+                                                            $minP = $product->variants->min('price');
+                                                            $maxP = $product->variants->max('price');
+                                                        @endphp
+                                                        @if($minP)
+                                                            <span class="theme3-clr fw-semibold fs-16">
+                                                                Rs {{ number_format($minP, 0) }}{{ $minP != $maxP ? ' – Rs ' . number_format($maxP, 0) : '' }}
+                                                            </span>
                                                         @else
-                                                            <span class="theme3-clr fw-semibold fs-16">Rs
-                                                                {{ $product->regular_price }}</span>
+                                                            <span class="text-muted fs-16">—</span>
                                                         @endif
                                                      
                                                     </div>
@@ -187,53 +189,32 @@
                                                       
                                                         @if (Cart::instance('cart')->content()->where('id', $product->id)->count() > 0)
                                                             <a href="{{ route('cart.index') }}"
-                                                                class="theme-btn  heading-font rounded-pill py-2 px-3">
+                                                                class="theme-btn heading-font rounded-pill py-2 px-3">
                                                                 Go to Cart
                                                             </a>
                                                         @else
-                                                            <form name="addtocart-form" method="post"
-                                                                action="{{ route('cart.add') }}">
-                                                                @csrf
-                                                                <input type="hidden" name="id"
-                                                                    value="{{ $product->id }}">
-                                                                <input type="hidden" name="name"
-                                                                    value="{{ $product->name }}">
-                                                                <input type="hidden" name="quantity" value="1">
-                                                                <input type="hidden" name="price"
-                                                                    value="{{ $product->sale_price == '' ? $product->regular_price : $product->sale_price }}">
-
-                                                                <button type="submit"
-                                                                    class="theme-btn  heading-font rounded-pill py-2 px-3">
-                                                                    Add to Cart
-                                                                </button>
-                                                            </form>
+                                                            <a href="{{ route('shop.product.details', $product->slug) }}"
+                                                                class="theme-btn heading-font rounded-pill py-2 px-3">
+                                                                Select Variant
+                                                            </a>
                                                         @endif
-                                                        @if (Cart::instance('wishlist')->content()->where('id', $product->id)->count() > 0)
-                                                            <form
-                                                                action="{{ route('wishlist.item.remove', ['rowId' => Cart::instance('wishlist')->content()->where('id', $product->id)->first()->rowId]) }}"
-                                                                method="POST">
+                                                        @if (in_array($product->id, $wishlisted_ids))
+                                                            <form action="{{ route('wishlist.remove.product', $product->id) }}" method="POST">
                                                                 @csrf
                                                                 @method('DELETE')
-                                                                <button type="submit"  class="theme-btn btn-outline-theme heading-font rounded-pill py-2 px-3"
-                                                                    title="Add To Wishlist">
+                                                                <button type="submit" class="theme-btn btn-outline-theme heading-font rounded-pill py-2 px-3">
                                                                     Remove Wishlist
                                                                 </button>
                                                             </form>
                                                         @else
-                                                            <form action="{{ route('wishlist.add') }}" method="POST" >
+                                                            <form action="{{ route('wishlist.add') }}" method="POST">
                                                                 @csrf
-                                                                <input type="hidden" name="id"
-                                                                    value="{{ $product->id }}">
-                                                                <input type="hidden" name="name"
-                                                                    value="{{ $product->name }}">
+                                                                <input type="hidden" name="id" value="{{ $product->id }}">
+                                                                <input type="hidden" name="name" value="{{ $product->name }}">
                                                                 <input type="hidden" name="quantity" value="1">
-                                                                <input type="hidden" name="price"
-                                                                    value="{{ $product->sale_price == '' ? $product->regular_price : $product->sale_price }}">
-                                                                <button type="submit"  class="theme-btn btn-outline-theme heading-font rounded-pill py-2 px-3"
-                                                                    title="Add To Wishlist">
-                                                                       Add to Wishlist
-                                                                    {{-- <img src="{{ asset('assets/img/icon/wishlist_black.png') }}"
-                                                                        alt="tolly-icon"> --}}
+                                                                <input type="hidden" name="price" value="{{ $product->min_price ?? 0 }}">
+                                                                <button type="submit" class="theme-btn btn-outline-theme heading-font rounded-pill py-2 px-3">
+                                                                    Add to Wishlist
                                                                 </button>
                                                             </form>
                                                         @endif

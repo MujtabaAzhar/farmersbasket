@@ -6486,3 +6486,9 @@ input.main-search-input::placeholder {
     padding: 24px;
   }
 }/*# sourceMappingURL=main.css.map */
+
+.custom_alert {
+    font-size: 12px;
+    padding: 5px;
+    margin-top: 12px;
+}

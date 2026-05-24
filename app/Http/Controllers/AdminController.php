@@ -9,21 +9,38 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\User;
 use App\Models\ProductSize;
+use App\Models\ProductVariant;
 use App\Models\Contacts;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\AdminNotification;
+use App\Services\NotificationService;
+use App\Models\Branch;
+use App\Models\InventoryLog;
+use App\Models\LoginActivityLog;
+use App\Models\OrderHistory;
+use App\Models\PosSession;
+use App\Models\Review;
+use App\Models\CourierService;
+use App\Models\Rider;
+use App\Models\Shipment;
 use App\Models\Slide;
+use App\Models\StockTransfer;
 use App\Models\Transection;
+use App\Models\Warehouse;
+use App\Models\WarehouseInventory;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 use Intervention\Image\Laravel\Facades\Image;
 
 class AdminController extends Controller
 {
     public function index(){
-        $orders = Order::orderBy('created_at','DESC')->get()->take(10);
+        $orders = Order::orderBy('created_at', 'DESC')->limit(10)->get();
         $dashboardDatas = DB::select("Select sum(total) AS TotalAmount,
         sum(if(status = 'ordered',total,0)) AS TotalOrderedAmount,
         sum(if(status = 'delivered',total,0)) AS TotalDeliveredAmount,
@@ -247,8 +264,7 @@ class AdminController extends Controller
 
     // Products Start
     public function products(){
-
-    $products = Product::orderBy('created_at','DESC')->paginate(10);
+        $products = Product::with('variants')->orderBy('created_at','DESC')->paginate(10);
         return view('admin.products', compact('products'));
     }
 
@@ -262,35 +278,30 @@ class AdminController extends Controller
 
     public function product_store(Request $request){
         $request->validate([
-            'name' => 'required',
-            'slug' => 'required|unique:products,slug',
+            'name'              => 'required|string|max:255',
+            'slug'              => 'required|unique:products,slug',
             'short_description' => 'required',
-            'description' => 'required',
-            'regular_price' => 'required',
-            'sale_price' => 'required',
-            'stock_status' => 'required',
-            'featured' => 'required',
-            'image' => 'required|image|mimes:jpeg,png,jpg|max:2048',
-            'category_id' => 'required',
-            'brand_id' => 'required',
+            'description'       => 'required',
+            'featured'          => 'required',
+            'image'             => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            'category_id'       => 'required',
+            'brand_id'          => 'required',
+            'variants'          => 'required|array|min:1',
+            'variants.*.variant_name' => 'required|string|max:100',
+            'variants.*.price'        => 'required|numeric|min:0',
+            'variants.*.stock_qty'    => 'required|integer|min:0',
+            'variants.*.unit'         => 'required|string|max:20',
         ]);
 
         $product = new Product();
-        $product->name = $request->name;
-        $product->slug = Str::slug($request->name);
+        $product->name              = $request->name;
+        $product->slug              = Str::slug($request->name);
         $product->short_description = $request->short_description;
-        $product->description = $request->description;
-        $product->regular_price = $request->regular_price;
-        $product->sale_price = $request->sale_price;
-        
-        // Auto-generate SKU: PROD-{timestamp}-{random}
-        $product->SKU = 'PROD-' . time() . '-' . strtoupper(Str::random(4));
-        
-        $product->stock_status = $request->stock_status;
-        $product->featured = $request->featured;
-        $product->quantity = 0; // Will be calculated from sizes
-        $product->category_id = $request->category_id;
-        $product->brand_id = $request->brand_id;
+        $product->description       = $request->description;
+        $product->featured          = $request->featured;
+        $product->category_id       = $request->category_id;
+        $product->brand_id          = $request->brand_id;
+        $product->stock_status      = 'instock';
 
         $current_timestamp = Carbon::now()->timestamp;
 
@@ -300,65 +311,43 @@ class AdminController extends Controller
             $this->GenerateProductThumbnailsImage($image, $imageName);
             $product->image = $imageName;
         }
-        
-        
-        $gallery_arr = array();
-        $gallery_images = "";
-        $counter = 1;
 
-        if($request->hasFile('images'))
-        {
-            $allowedfileExtensions = ['jpeg', 'jpg', 'png'];
-            $files = $request->file('images');
-            foreach ($files as $file) 
-            {
-                $gextension = strtolower($file->getClientOriginalExtension());
-                $gcheck = in_array($gextension, $allowedfileExtensions);
-                if($gcheck)
-                {
-                    $gfileName = $current_timestamp.'-'.$counter.'.'.$gextension;
+        $gallery_arr = [];
+        $counter = 1;
+        if($request->hasFile('images')){
+            foreach ($request->file('images') as $file) {
+                $ext = strtolower($file->getClientOriginalExtension());
+                if(in_array($ext, ['jpeg','jpg','png'])){
+                    $gfileName = $current_timestamp.'-'.$counter.'.'.$ext;
                     $this->GenerateProductThumbnailsImage($file, $gfileName);
-                    array_push($gallery_arr, $gfileName);
-                    $counter = $counter + 1;
+                    $gallery_arr[] = $gfileName;
+                    $counter++;
                 }
             }
         }
-        $gallery_images = implode(",",$gallery_arr);
-        $product->images = $gallery_images;
+        $product->images = implode(',', $gallery_arr);
         $product->save();
 
-        // Handle product sizes
-        if($request->has('size_values') && is_array($request->size_values)){
-            $size_values = $request->size_values;
-            $size_quantities = $request->size_quantities ?? [];
-            $size_regular_prices = $request->size_regular_prices ?? [];
-            $size_sale_prices = $request->size_sale_prices ?? [];
-            $unit = $request->unit ?? 'KG';
-            
-            $total_quantity = 0;
-            foreach($size_values as $key => $size_value){
-                if(!empty($size_value)){
-                    $quantity = isset($size_quantities[$key]) ? $size_quantities[$key] : 0;
-                    $regular_price = isset($size_regular_prices[$key]) ? $size_regular_prices[$key] : $product->regular_price;
-                    $sale_price = isset($size_sale_prices[$key]) ? $size_sale_prices[$key] : $product->sale_price;
-                    
-                    ProductSize::create([
-                        'product_id' => $product->id,
-                        'size_label' => $size_value . ' ' . $unit,
-                        'size_value' => $size_value,
-                        'unit' => $unit,
-                        'quantity' => $quantity,
-                        'regular_price' => $regular_price,
-                        'sale_price' => $sale_price
-                    ]);
-                    $total_quantity += $quantity;
-                }
-            }
-            
-            // Update product total quantity
-            $product->quantity = $total_quantity;
-            $product->save();
+        // Save variants
+        foreach ($request->variants as $v) {
+            if (empty($v['variant_name'])) continue;
+            ProductVariant::create([
+                'product_id'       => $product->id,
+                'variant_name'     => $v['variant_name'],
+                'weight'           => $v['weight'] ?? null,
+                'unit'             => $v['unit'],
+                'sku'              => !empty($v['sku']) ? $v['sku'] : null,
+                'barcode'          => $v['barcode'] ?? null,
+                'price'            => $v['price'],
+                'compare_price'    => !empty($v['compare_price']) ? $v['compare_price'] : null,
+                'cost_price'       => !empty($v['cost_price']) ? $v['cost_price'] : null,
+                'stock_qty'        => $v['stock_qty'],
+                'low_stock_alert'  => $v['low_stock_alert'] ?? 5,
+                'is_active'        => true,
+            ]);
         }
+
+        $product->syncStockStatus();
         
         return redirect()->route('admin.products')->with('status', 'Product added successfully.');
     
@@ -380,7 +369,7 @@ class AdminController extends Controller
     }
 
     public function product_edit($id){
-        $product = Product::find($id);
+        $product = Product::with('variants')->findOrFail($id);
         $categories = Category::select('id','name')->orderBy('name')->get();
         $brands = Brand::select('id','name')->orderBy('name')->get();
         return view('admin.product-edit', compact('product','categories','brands'));
@@ -388,30 +377,29 @@ class AdminController extends Controller
 
     public function product_update(Request $request, $id){
         $request->validate([
-            'name' => 'required',
-            'slug' => 'required|unique:products,slug,'.$id,
+            'name'              => 'required',
+            'slug'              => 'required|unique:products,slug,'.$id,
             'short_description' => 'required',
-            'description' => 'required',
-            'regular_price' => 'required',
-            'sale_price' => 'required',
-            'stock_status' => 'required',
-            'featured' => 'required',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'category_id' => 'required',
-            'brand_id' => 'required',
+            'description'       => 'required',
+            'featured'          => 'required',
+            'image'             => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'category_id'       => 'required',
+            'brand_id'          => 'required',
+            'variants'          => 'required|array|min:1',
+            'variants.*.variant_name' => 'required|string|max:100',
+            'variants.*.price'        => 'required|numeric|min:0',
+            'variants.*.stock_qty'    => 'required|integer|min:0',
+            'variants.*.unit'         => 'required|string|max:20',
         ]);
 
-        $product = Product::find($id);
-        $product->name = $request->name;
-        $product->slug = $request->slug;
+        $product = Product::findOrFail($id);
+        $product->name              = $request->name;
+        $product->slug              = $request->slug;
         $product->short_description = $request->short_description;
-        $product->description = $request->description;
-        $product->regular_price = $request->regular_price;
-        $product->sale_price = $request->sale_price;
-        $product->stock_status = $request->stock_status;
-        $product->featured = $request->featured;
-        $product->category_id = $request->category_id;
-        $product->brand_id = $request->brand_id;
+        $product->description       = $request->description;
+        $product->featured          = $request->featured;
+        $product->category_id       = $request->category_id;
+        $product->brand_id          = $request->brand_id;
 
         $current_timestamp = Carbon::now()->timestamp;
 
@@ -484,37 +472,52 @@ class AdminController extends Controller
 
         $product->save();
 
-        // Update size variants if provided
-        if($request->has('size_values') && is_array($request->size_values)){
-            // Delete existing sizes
-            ProductSize::where('product_id', $product->id)->delete();
-
-            $unit = $request->unit ?? 'KG';
-            $total_quantity = 0;
-
-            foreach($request->size_values as $index => $size_value){
-                if($size_value && isset($request->size_quantities[$index])){
-                    $quantity = intval($request->size_quantities[$index]);
-                    $regular_price = isset($request->size_regular_prices[$index]) ? $request->size_regular_prices[$index] : $product->regular_price;
-                    $sale_price = isset($request->size_sale_prices[$index]) ? $request->size_sale_prices[$index] : $product->sale_price;
-                    
-                    ProductSize::create([
-                        'product_id' => $product->id,
-                        'size_label' => $size_value . ' ' . $unit,
-                        'size_value' => $size_value,
-                        'unit' => $unit,
-                        'quantity' => $quantity,
-                        'regular_price' => $regular_price,
-                        'sale_price' => $sale_price
+        // Sync variants: keep existing by ID, delete removed, update/create
+        $submittedIds = [];
+        foreach ($request->variants as $v) {
+            if (!empty($v['id'])) {
+                $variant = ProductVariant::where('product_id', $product->id)->find($v['id']);
+                if ($variant) {
+                    $variant->update([
+                        'variant_name'    => $v['variant_name'],
+                        'weight'          => $v['weight'] ?? null,
+                        'unit'            => $v['unit'],
+                        'sku'             => !empty($v['sku']) ? $v['sku'] : null,
+                        'barcode'         => $v['barcode'] ?? null,
+                        'price'           => $v['price'],
+                        'compare_price'   => !empty($v['compare_price']) ? $v['compare_price'] : null,
+                        'cost_price'      => !empty($v['cost_price']) ? $v['cost_price'] : null,
+                        'stock_qty'       => $v['stock_qty'],
+                        'low_stock_alert' => $v['low_stock_alert'] ?? 5,
+                        'is_active'       => true,
                     ]);
-                    $total_quantity += $quantity;
+                    $submittedIds[] = $variant->id;
+                    continue;
                 }
             }
-
-            // Update product quantity to sum of all sizes
-            $product->quantity = $total_quantity;
-            $product->save();
+            $newVariant = ProductVariant::create([
+                'product_id'      => $product->id,
+                'variant_name'    => $v['variant_name'],
+                'weight'          => $v['weight'] ?? null,
+                'unit'            => $v['unit'],
+                'sku'             => !empty($v['sku']) ? $v['sku'] : null,
+                'barcode'         => $v['barcode'] ?? null,
+                'price'           => $v['price'],
+                'compare_price'   => !empty($v['compare_price']) ? $v['compare_price'] : null,
+                'cost_price'      => !empty($v['cost_price']) ? $v['cost_price'] : null,
+                'stock_qty'       => $v['stock_qty'],
+                'low_stock_alert' => $v['low_stock_alert'] ?? 5,
+                'is_active'       => true,
+            ]);
+            $submittedIds[] = $newVariant->id;
         }
+
+        // Delete variants that were removed in the form
+        ProductVariant::where('product_id', $product->id)
+            ->whereNotIn('id', $submittedIds)
+            ->delete();
+
+        $product->syncStockStatus();
 
         return redirect()->route('admin.products')->with('status', 'Product updated successfully.');
     }
@@ -541,7 +544,7 @@ class AdminController extends Controller
     }
 
     public function product_quantity(){
-        $products = Product::with('sizes')->orderBy('name')->paginate(15);
+        $products = Product::with('variants')->orderBy('name')->paginate(15);
         return view('admin.product-quantity', compact('products'));
     }
 
@@ -550,21 +553,19 @@ class AdminController extends Controller
             'quantities' => 'required|array'
         ]);
 
-        $quantities = $request->quantities;
         $products_to_update = [];
 
-        foreach($quantities as $size_id => $quantity){
-            $size = ProductSize::find($size_id);
-            if($size) {
-                $size->update(['quantity' => $quantity]);
-                $products_to_update[$size->product_id] = true;
+        foreach ($request->quantities as $variant_id => $quantity) {
+            $variant = ProductVariant::find($variant_id);
+            if ($variant) {
+                $variant->update(['stock_qty' => max(0, (int) $quantity)]);
+                $products_to_update[$variant->product_id] = true;
             }
         }
 
-        // Recalculate total quantity for each affected product
-        foreach(array_keys($products_to_update) as $product_id) {
-            $total_qty = ProductSize::where('product_id', $product_id)->sum('quantity');
-            Product::where('id', $product_id)->update(['quantity' => $total_qty]);
+        foreach (array_keys($products_to_update) as $product_id) {
+            $product = Product::find($product_id);
+            if ($product) $product->syncStockStatus();
         }
 
         return back()->with('status', 'Quantities updated successfully.');
@@ -633,29 +634,148 @@ class AdminController extends Controller
     }
 
     public function order_details($order_id){
-        $order = Order::find($order_id);
-        $orderItems = OrderItem::where('order_id', $order_id)->orderBy('id')->paginate(12);
-        $transection = Transection::where('order_id', $order_id)->first();
-        return view('admin.order-details', compact('order', 'orderItems', 'transection'));
+        $order = Order::with([
+            'histories.creator',
+            'cashier',
+            'branch',
+            'posPayment',
+            'transaction',
+            'giftOrder',
+        ])->findOrFail($order_id);
+
+        $orderItems = OrderItem::with(['product.category', 'product.brand', 'variant'])
+            ->where('order_id', $order_id)
+            ->orderBy('id')
+            ->get();
+
+        $couriers = CourierService::where('is_active', true)
+            ->orderByRaw("FIELD(code,'internal','leopards','tcs','mnp')")
+            ->get();
+
+        $riders = Rider::where('is_active', true)->with('branch')->orderBy('name')->get();
+
+        $existingShipment = Shipment::where('order_id', $order_id)
+            ->whereNotIn('status', ['canceled', 'returned'])
+            ->first();
+
+        return view('admin.order-details', compact('order', 'orderItems', 'couriers', 'riders', 'existingShipment'));
+    }
+
+    public function bulk_update_orders(Request $request)
+    {
+        $request->validate([
+            'order_ids'    => ['required', 'array', 'min:1'],
+            'order_ids.*'  => ['integer', 'exists:orders,id'],
+            'order_status' => ['required', 'in:ordered,confirmed,packed,shipped,delivered,canceled,returned'],
+        ]);
+
+        $status = $request->order_status;
+        $now    = Carbon::now();
+
+        foreach ($request->order_ids as $id) {
+            $order = Order::find($id);
+            if (!$order) continue;
+
+            $order->status = $status;
+
+            if ($status === 'delivered') {
+                $order->delivered_date = $now;
+                $order->payment_status = 'paid';
+            } elseif ($status === 'canceled') {
+                $order->canceled_date = $now;
+            } elseif ($status === 'returned') {
+                $order->payment_status = 'refunded';
+            }
+
+            $order->save();
+
+            OrderHistory::create([
+                'order_id'      => $order->id,
+                'status'        => $status,
+                'note'          => 'Bulk status update by admin',
+                'created_by'    => Auth::id(),
+                'is_admin_note' => true,
+            ]);
+        }
+
+        $count = count($request->order_ids);
+        return back()->with('status', "Updated {$count} order(s) to \"" . ucfirst($status) . '".');
     }
 
     public function update_order_status(Request $request){
-        $order = Order::find($request->order_id);
+        $request->validate([
+            'order_id'                => ['required', 'integer', 'exists:orders,id'],
+            'order_status'            => ['required', 'in:ordered,confirmed,packed,shipped,delivered,canceled,returned'],
+            'tracking_number'         => ['nullable', 'string', 'max:100'],
+            'courier_name'            => ['nullable', 'string', 'max:100'],
+            'estimated_delivery_date' => ['nullable', 'date'],
+            'admin_note'              => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $order = Order::findOrFail($request->order_id);
         $order->status = $request->order_status;
 
-        if($request->order_status == 'delivered'){
-            $order->delivered_date = Carbon::now();
+        if ($request->filled('tracking_number')) {
+            $order->tracking_number = $request->tracking_number;
         }
-        else if($request->order_status == 'canceled'){
-            $order->canceled_date = Carbon::now();
+        if ($request->filled('courier_name')) {
+            $order->courier_name = $request->courier_name;
+        }
+        if ($request->filled('estimated_delivery_date')) {
+            $order->estimated_delivery_date = $request->estimated_delivery_date;
+        }
+
+        if ($request->order_status === 'delivered') {
+            $order->delivered_date = Carbon::now();
+            $order->payment_status  = 'paid';
+        } elseif (in_array($request->order_status, ['canceled', 'returned'])) {
+            if ($request->order_status === 'canceled') {
+                $order->canceled_date = Carbon::now();
+            } else {
+                $order->payment_status = 'refunded';
+            }
+            // Restore stock when admin cancels or accepts a return
+            foreach ($order->orderItems as $item) {
+                if ($item->variant_id) {
+                    $variant = ProductVariant::find($item->variant_id);
+                    if ($variant) {
+                        $before = $variant->stock_qty;
+                        $variant->stock_qty = $before + $item->quantity;
+                        $variant->save();
+                        $variant->product->syncStockStatus();
+                        InventoryLog::record($item->product_id, 'cancel', $before, $item->quantity, $item->variant_id, null, "Order #{$order->id} {$request->order_status} by admin", Auth::id());
+                    }
+                } else {
+                    $product = Product::find($item->product_id);
+                    if ($product) {
+                        InventoryLog::record($product->id, 'cancel', 0, $item->quantity, null, null, "Order #{$order->id} {$request->order_status} by admin", Auth::id());
+                    }
+                }
+            }
         }
 
         $order->save();
-        if($request->order_status == 'delivered'){
-            $transection = Transection::where('order_id', $request->order_id)->first();
-            $transection->status = 'approved';
-            $transection->save();
+
+        // Notify customer of status change (skip 'ordered' — that's already sent on placement)
+        if (!in_array($request->order_status, ['ordered'])) {
+            NotificationService::orderStatusUpdated($order);
         }
+
+        if ($request->order_status === 'delivered') {
+            $transection = Transection::where('order_id', $request->order_id)->first();
+            if ($transection) {
+                $transection->status = 'approved';
+                $transection->save();
+            }
+        }
+
+        OrderHistory::create([
+            'order_id'      => $order->id,
+            'status'        => $request->order_status,
+            'note'          => $request->admin_note ?: null,
+            'created_by'    => Auth::id(),
+            'is_admin_note' => $request->filled('admin_note'),
+        ]);
 
         return back()->with('status', 'Order status updated successfully.');
     }
@@ -760,8 +880,619 @@ class AdminController extends Controller
 
     public function search(Request $request){
         $query = $request->input('query');
-        $results = Product::where('name', 'LIKE', "%{$query}%")->get()->take(8);
+        $results = Product::where('name', 'LIKE', "%{$query}%")->limit(8)->get();
         return response()->json($results);
+    }
+
+    public function reviews()
+    {
+        $reviews = Review::with(['product', 'user'])
+            ->orderBy('created_at', 'DESC')
+            ->paginate(20);
+        return view('admin.reviews', compact('reviews'));
+    }
+
+    public function review_approve($id)
+    {
+        $review = Review::findOrFail($id);
+        $review->status = 'approved';
+        $review->save();
+        return back()->with('status', 'Review approved.');
+    }
+
+    public function review_reject($id)
+    {
+        $review = Review::findOrFail($id);
+        $review->status = 'rejected';
+        $review->save();
+        return back()->with('status', 'Review rejected.');
+    }
+
+    public function review_delete($id)
+    {
+        Review::findOrFail($id)->delete();
+        return back()->with('status', 'Review deleted.');
+    }
+
+    // -------------------------------------------------------------------------
+    // Inventory Management
+    // -------------------------------------------------------------------------
+
+    const LOW_STOCK_THRESHOLD = 10;
+
+    public function inventory(Request $request)
+    {
+        $query = ProductVariant::with('product')
+            ->whereHas('product')
+            ->orderBy('stock_qty', 'asc');
+
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('variant_name', 'like', '%' . $request->search . '%')
+                  ->orWhere('sku', 'like', '%' . $request->search . '%')
+                  ->orWhere('barcode', 'like', '%' . $request->search . '%')
+                  ->orWhereHas('product', fn($p) => $p->where('name', 'like', '%' . $request->search . '%'));
+            });
+        }
+        if ($request->filter === 'low') {
+            $query->whereRaw('stock_qty > 0 AND stock_qty <= low_stock_alert');
+        } elseif ($request->filter === 'out') {
+            $query->where('stock_qty', '<=', 0);
+        }
+
+        $variants        = $query->paginate(20)->withQueryString();
+        $total_variants  = ProductVariant::count();
+        $low_stock_count = ProductVariant::whereRaw('stock_qty > 0 AND stock_qty <= low_stock_alert')->count();
+        $out_stock_count = ProductVariant::where('stock_qty', '<=', 0)->count();
+        $recent_logs     = InventoryLog::with(['product', 'variant', 'creator'])->latest()->limit(15)->get();
+
+        return view('admin.inventory', compact(
+            'variants', 'total_variants', 'low_stock_count', 'out_stock_count', 'recent_logs'
+        ));
+    }
+
+    public function inventory_adjust(Request $request)
+    {
+        $request->validate([
+            'variant_id'      => ['required', 'exists:product_variants,id'],
+            'adjustment_type' => ['required', 'in:increase,decrease,set'],
+            'quantity'        => ['required', 'integer', 'min:0'],
+            'note'            => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $variant = ProductVariant::with('product')->findOrFail($request->variant_id);
+        $before  = $variant->stock_qty;
+
+        if ($request->adjustment_type === 'increase') {
+            $change = $request->quantity;
+            $after  = $before + $change;
+        } elseif ($request->adjustment_type === 'decrease') {
+            $change = -min($request->quantity, $before);
+            $after  = $before + $change;
+        } else {
+            $after  = $request->quantity;
+            $change = $after - $before;
+        }
+
+        $variant->stock_qty = $after;
+        $variant->save();
+        $variant->product->syncStockStatus();
+
+        InventoryLog::record($variant->product_id, 'adjustment', $before, $change, $variant->id, null, $request->note ?: 'Manual adjustment', Auth::id());
+
+        return back()->with('status', "Stock updated for \"{$variant->product->name} — {$variant->variant_name}\".");
+    }
+
+    // -------------------------------------------------------------------------
+    // Warehouses
+    // -------------------------------------------------------------------------
+
+    public function warehouses()
+    {
+        $warehouses = Warehouse::withCount('inventories')->orderBy('name')->paginate(15);
+        return view('admin.warehouses', compact('warehouses'));
+    }
+
+    public function warehouse_add()
+    {
+        return view('admin.warehouse-add');
+    }
+
+    public function warehouse_store(Request $request)
+    {
+        $request->validate([
+            'name'          => ['required', 'string', 'max:100'],
+            'code'          => ['required', 'string', 'max:20', 'unique:warehouses,code'],
+            'address'       => ['nullable', 'string', 'max:255'],
+            'city'          => ['nullable', 'string', 'max:100'],
+            'manager_name'  => ['nullable', 'string', 'max:100'],
+            'manager_phone' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        Warehouse::create(array_merge(
+            $request->only(['name', 'code', 'address', 'city', 'manager_name', 'manager_phone']),
+            ['is_active' => true]
+        ));
+
+        return redirect()->route('admin.warehouses')->with('status', 'Warehouse created successfully.');
+    }
+
+    public function warehouse_edit($id)
+    {
+        $warehouse = Warehouse::findOrFail($id);
+        return view('admin.warehouse-edit', compact('warehouse'));
+    }
+
+    public function warehouse_update(Request $request, $id)
+    {
+        $warehouse = Warehouse::findOrFail($id);
+        $request->validate([
+            'name'          => ['required', 'string', 'max:100'],
+            'code'          => ['required', 'string', 'max:20', "unique:warehouses,code,{$id}"],
+            'address'       => ['nullable', 'string', 'max:255'],
+            'city'          => ['nullable', 'string', 'max:100'],
+            'manager_name'  => ['nullable', 'string', 'max:100'],
+            'manager_phone' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $warehouse->update(array_merge(
+            $request->only(['name', 'code', 'address', 'city', 'manager_name', 'manager_phone']),
+            ['is_active' => $request->boolean('is_active', true)]
+        ));
+
+        return redirect()->route('admin.warehouses')->with('status', 'Warehouse updated.');
+    }
+
+    public function warehouse_delete($id)
+    {
+        Warehouse::findOrFail($id)->delete();
+        return back()->with('status', 'Warehouse deleted.');
+    }
+
+    public function warehouse_inventory($id)
+    {
+        $warehouse   = Warehouse::findOrFail($id);
+        $inventories = WarehouseInventory::with(['product', 'variant'])
+            ->where('warehouse_id', $id)
+            ->orderBy('quantity', 'asc')
+            ->paginate(25);
+        $products = Product::with('variants')->orderBy('name')->get(['id', 'name', 'sku']);
+        return view('admin.warehouse-inventory', compact('warehouse', 'inventories', 'products'));
+    }
+
+    public function warehouse_inventory_adjust(Request $request, $id)
+    {
+        $warehouse = Warehouse::findOrFail($id);
+        $request->validate([
+            'product_id'      => ['required', 'exists:products,id'],
+            'variant_id'      => ['nullable', 'exists:product_variants,id'],
+            'adjustment_type' => ['required', 'in:increase,decrease,set'],
+            'quantity'        => ['required', 'integer', 'min:0'],
+            'note'            => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $inv = WarehouseInventory::firstOrNew([
+            'warehouse_id' => $warehouse->id,
+            'product_id'   => $request->product_id,
+            'variant_id'   => $request->variant_id,
+        ]);
+
+        $before = $inv->quantity ?? 0;
+
+        if ($request->adjustment_type === 'increase') {
+            $inv->quantity = $before + $request->quantity;
+        } elseif ($request->adjustment_type === 'decrease') {
+            $inv->quantity = max(0, $before - $request->quantity);
+        } else {
+            $inv->quantity = $request->quantity;
+        }
+
+        $inv->save();
+
+        InventoryLog::record($request->product_id, 'adjustment', $before, $inv->quantity - $before, $request->variant_id, $warehouse->id, $request->note ?: "Warehouse stock adjustment", Auth::id());
+
+        return back()->with('status', 'Warehouse stock updated.');
+    }
+
+    // -------------------------------------------------------------------------
+    // Stock Transfers
+    // -------------------------------------------------------------------------
+
+    public function stock_transfers()
+    {
+        $transfers = StockTransfer::with(['product', 'fromWarehouse', 'toWarehouse', 'creator'])
+            ->latest()
+            ->paginate(20);
+        return view('admin.stock-transfers', compact('transfers'));
+    }
+
+    public function stock_transfer_create()
+    {
+        $warehouses = Warehouse::where('is_active', true)->orderBy('name')->get();
+        $products   = Product::with('variants')->orderBy('name')->get(['id', 'name', 'sku']);
+        return view('admin.stock-transfer-create', compact('warehouses', 'products'));
+    }
+
+    public function stock_transfer_store(Request $request)
+    {
+        $request->validate([
+            'from_warehouse_id' => ['nullable', 'exists:warehouses,id'],
+            'to_warehouse_id'   => ['nullable', 'exists:warehouses,id'],
+            'product_id'        => ['required', 'exists:products,id'],
+            'variant_id'        => ['nullable', 'exists:product_variants,id'],
+            'quantity'          => ['required', 'integer', 'min:1'],
+            'note'              => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if ($request->from_warehouse_id == $request->to_warehouse_id) {
+            return back()->withErrors(['to_warehouse_id' => 'Source and destination must be different.'])->withInput();
+        }
+
+        if (!$request->from_warehouse_id && !$request->to_warehouse_id) {
+            return back()->withErrors(['to_warehouse_id' => 'At least one warehouse must be specified.'])->withInput();
+        }
+
+        StockTransfer::create([
+            'from_warehouse_id' => $request->from_warehouse_id,
+            'to_warehouse_id'   => $request->to_warehouse_id,
+            'product_id'        => $request->product_id,
+            'variant_id'        => $request->variant_id,
+            'quantity'          => $request->quantity,
+            'status'            => 'pending',
+            'note'              => $request->note,
+            'created_by'        => Auth::id(),
+        ]);
+
+        return redirect()->route('admin.stock.transfers')->with('status', 'Transfer request created.');
+    }
+
+    public function stock_transfer_complete($id)
+    {
+        $transfer = StockTransfer::with(['product', 'variant'])->findOrFail($id);
+        abort_if($transfer->status !== 'pending', 422, 'Only pending transfers can be completed.');
+
+        $product   = $transfer->product;
+        $variant   = $transfer->variant;
+        $qty       = $transfer->quantity;
+        $variantId = $transfer->variant_id;
+
+        // Deduct from source (warehouse inventory or main variant stock)
+        if ($transfer->from_warehouse_id) {
+            $srcInv = WarehouseInventory::firstOrNew([
+                'warehouse_id' => $transfer->from_warehouse_id,
+                'product_id'   => $product->id,
+                'variant_id'   => $variantId,
+            ]);
+            $before = $srcInv->quantity ?? 0;
+            $srcInv->quantity = max(0, $before - $qty);
+            $srcInv->save();
+            InventoryLog::record($product->id, 'transfer_out', $before, -$qty, $variantId, $transfer->from_warehouse_id, "Transfer #{$id}", Auth::id());
+        } elseif ($variant) {
+            $before = $variant->stock_qty;
+            $variant->stock_qty = max(0, $before - $qty);
+            $variant->save();
+            $product->syncStockStatus();
+            InventoryLog::record($product->id, 'transfer_out', $before, -$qty, $variantId, null, "Transfer #{$id} to warehouse #{$transfer->to_warehouse_id}", Auth::id());
+        }
+
+        // Add to destination (warehouse inventory or main variant stock)
+        if ($transfer->to_warehouse_id) {
+            $dstInv = WarehouseInventory::firstOrNew([
+                'warehouse_id' => $transfer->to_warehouse_id,
+                'product_id'   => $product->id,
+                'variant_id'   => $variantId,
+            ]);
+            $before = $dstInv->quantity ?? 0;
+            $dstInv->quantity = $before + $qty;
+            $dstInv->save();
+            InventoryLog::record($product->id, 'transfer_in', $before, $qty, $variantId, $transfer->to_warehouse_id, "Transfer #{$id}", Auth::id());
+        } elseif ($variant) {
+            $before = $variant->stock_qty;
+            $variant->stock_qty = $before + $qty;
+            $variant->save();
+            $product->syncStockStatus();
+            InventoryLog::record($product->id, 'transfer_in', $before, $qty, $variantId, null, "Transfer #{$id} from warehouse #{$transfer->from_warehouse_id}", Auth::id());
+        }
+
+        $transfer->status       = 'completed';
+        $transfer->completed_at = Carbon::now();
+        $transfer->save();
+
+        return back()->with('status', 'Transfer completed successfully.');
+    }
+
+    public function stock_transfer_cancel($id)
+    {
+        $transfer = StockTransfer::findOrFail($id);
+        abort_if($transfer->status !== 'pending', 422, 'Only pending transfers can be cancelled.');
+        $transfer->status = 'cancelled';
+        $transfer->save();
+        return back()->with('status', 'Transfer cancelled.');
+    }
+
+    // -------------------------------------------------------------------------
+    // Branch Management
+    // -------------------------------------------------------------------------
+
+    public function branches()
+    {
+        $branches = Branch::withCount('staff')->orderBy('name')->paginate(15);
+        return view('admin.branches', compact('branches'));
+    }
+
+    public function branch_add()
+    {
+        $supervisors = User::where('pos_role', 'pos_supervisor')->orderBy('name')->get(['id', 'name', 'email']);
+        return view('admin.branch-add', compact('supervisors'));
+    }
+
+    public function branch_store(Request $request)
+    {
+        $request->validate([
+            'name'       => ['required', 'string', 'max:100'],
+            'code'       => ['required', 'string', 'max:20', 'unique:branches,code'],
+            'address'    => ['nullable', 'string', 'max:255'],
+            'city'       => ['nullable', 'string', 'max:100'],
+            'phone'      => ['nullable', 'string', 'max:20'],
+            'manager_id' => ['nullable', 'exists:users,id'],
+        ]);
+
+        Branch::create($request->only(['name', 'code', 'address', 'city', 'phone', 'manager_id']) + ['is_active' => true]);
+        return redirect()->route('admin.branches')->with('status', 'Branch created.');
+    }
+
+    public function branch_edit($id)
+    {
+        $branch      = Branch::findOrFail($id);
+        $supervisors = User::where('pos_role', 'pos_supervisor')->orderBy('name')->get(['id', 'name', 'email']);
+        return view('admin.branch-edit', compact('branch', 'supervisors'));
+    }
+
+    public function branch_update(Request $request, $id)
+    {
+        $branch = Branch::findOrFail($id);
+        $request->validate([
+            'name'       => ['required', 'string', 'max:100'],
+            'code'       => ['required', 'string', 'max:20', "unique:branches,code,{$id}"],
+            'address'    => ['nullable', 'string', 'max:255'],
+            'city'       => ['nullable', 'string', 'max:100'],
+            'phone'      => ['nullable', 'string', 'max:20'],
+            'manager_id' => ['nullable', 'exists:users,id'],
+        ]);
+
+        $branch->update(array_merge(
+            $request->only(['name', 'code', 'address', 'city', 'phone', 'manager_id']),
+            ['is_active' => $request->boolean('is_active', true)]
+        ));
+        return redirect()->route('admin.branches')->with('status', 'Branch updated.');
+    }
+
+    public function branch_delete($id)
+    {
+        Branch::findOrFail($id)->delete();
+        return back()->with('status', 'Branch deleted.');
+    }
+
+    // -------------------------------------------------------------------------
+    // Cashier Management
+    // -------------------------------------------------------------------------
+
+    public function cashiers()
+    {
+        $cashiers = User::whereIn('pos_role', ['pos_supervisor', 'cashier'])
+            ->with('branch')
+            ->orderBy('name')
+            ->paginate(20);
+        $branches = Branch::where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']);
+        return view('admin.cashiers', compact('cashiers', 'branches'));
+    }
+
+    public function cashier_store(Request $request)
+    {
+        $request->validate([
+            'name'      => ['required', 'string', 'max:100'],
+            'email'     => ['required', 'email', 'unique:users,email'],
+            'mobile'    => ['required', 'string', 'max:20'],
+            'password'  => ['required', 'string', 'min:6'],
+            'pos_role'  => ['required', 'in:pos_supervisor,cashier'],
+            'branch_id' => ['nullable', 'exists:branches,id'],
+        ]);
+
+        $user = User::create([
+            'name'     => $request->name,
+            'email'    => $request->email,
+            'mobile'   => $request->mobile,
+            'password' => bcrypt($request->password),
+        ]);
+        $user->pos_role  = $request->pos_role;
+        $user->branch_id = $request->branch_id;
+        $user->save();
+
+        return redirect()->route('admin.cashiers')->with('status', "User \"{$user->name}\" created as {$user->roleBadge()}.");
+    }
+
+    public function cashier_update(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+        $request->validate([
+            'pos_role'  => ['required', 'in:pos_supervisor,cashier'],
+            'branch_id' => ['nullable', 'exists:branches,id'],
+        ]);
+
+        $user->pos_role  = $request->pos_role;
+        $user->branch_id = $request->branch_id;
+        $user->save();
+
+        return back()->with('status', "{$user->name} updated.");
+    }
+
+    public function cashier_revoke($id)
+    {
+        $user = User::findOrFail($id);
+        $user->pos_role  = null;
+        $user->branch_id = null;
+        $user->save();
+        return back()->with('status', "POS access revoked for {$user->name}.");
+    }
+
+    // -------------------------------------------------------------------------
+    // POS Sessions (admin view)
+    // -------------------------------------------------------------------------
+
+    public function pos_sessions()
+    {
+        $sessions    = PosSession::with(['cashier', 'branch'])->latest()->paginate(20);
+        $openCount   = PosSession::where('status', 'open')->count();
+        $todayCount  = PosSession::whereDate('opened_at', today())->count();
+        $todaySales  = Order::where('source', 'pos')->whereDate('created_at', today())->where('is_hold', false)->sum('total');
+
+        return view('admin.pos-sessions', compact('sessions', 'openCount', 'todayCount', 'todaySales'));
+    }
+
+    // -------------------------------------------------------------------------
+    // Notifications
+    // -------------------------------------------------------------------------
+
+    public function notifications_fetch()
+    {
+        $notifications = AdminNotification::latest()->limit(15)->get()->map(function ($n) {
+            return [
+                'id'       => $n->id,
+                'type'     => $n->type,
+                'title'    => $n->title,
+                'message'  => $n->message,
+                'url'      => $n->url,
+                'is_read'  => $n->is_read,
+                'time_ago' => $n->time_ago,
+            ];
+        });
+
+        return response()->json([
+            'unread_count'  => AdminNotification::where('is_read', false)->count(),
+            'notifications' => $notifications,
+        ]);
+    }
+
+    public function notifications_page()
+    {
+        $notifications = AdminNotification::latest()->paginate(30);
+        return view('admin.notifications', compact('notifications'));
+    }
+
+    public function notifications_read_all()
+    {
+        AdminNotification::where('is_read', false)->update(['is_read' => true]);
+        return response()->json(['ok' => true]);
+    }
+
+    public function notifications_mark_read($id)
+    {
+        AdminNotification::where('id', $id)->update(['is_read' => true]);
+        return response()->json(['ok' => true]);
+    }
+
+    // -------------------------------------------------------------------------
+    // Settings
+    // -------------------------------------------------------------------------
+
+    public function settings()
+    {
+        return view('admin.settings', ['admin' => Auth::user()]);
+    }
+
+    public function settings_profile(Request $request)
+    {
+        $admin = Auth::user();
+        $request->validate([
+            'name'   => ['required', 'string', 'max:100'],
+            'email'  => ['required', 'email', 'max:191', 'unique:users,email,'.$admin->id],
+            'mobile' => ['nullable', 'string', 'max:20', 'unique:users,mobile,'.$admin->id],
+        ]);
+
+        $admin->name   = $request->name;
+        $admin->email  = $request->email;
+        $admin->mobile = $request->mobile;
+        $admin->save();
+
+        return back()->with('profile_success', 'Profile updated successfully.');
+    }
+
+    public function settings_password(Request $request)
+    {
+        $request->validate([
+            'current_password'      => ['required'],
+            'new_password'          => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        if (!\Hash::check($request->current_password, Auth::user()->password)) {
+            return back()->withErrors(['current_password' => 'Current password is incorrect.'])->withInput();
+        }
+
+        Auth::user()->update(['password' => \Hash::make($request->new_password)]);
+
+        return back()->with('password_success', 'Password changed successfully.');
+    }
+
+    // -------------------------------------------------------------------------
+    // Customers
+    // -------------------------------------------------------------------------
+
+    public function customers(Request $request)
+    {
+        $query = User::where('utype', 'USR')
+            ->whereNull('pos_role')
+            ->withCount('orders as order_count')
+            ->withSum(['orders as total_spent' => function ($q) {
+                $q->where('status', 'delivered');
+            }], 'total')
+            ->with(['orders' => function ($q) {
+                $q->latest()->limit(1);
+            }]);
+
+        if ($request->filled('search')) {
+            $s = '%'.$request->search.'%';
+            $query->where(function ($q) use ($s) {
+                $q->where('name', 'like', $s)
+                  ->orWhere('email', 'like', $s)
+                  ->orWhere('mobile', 'like', $s);
+            });
+        }
+
+        $customers = $query->orderBy('created_at', 'desc')->paginate(25)->withQueryString();
+
+        return view('admin.customers', compact('customers'));
+    }
+
+    public function customer_detail($id)
+    {
+        $customer  = User::where('utype', 'USR')->whereNull('pos_role')->findOrFail($id);
+        $orders    = Order::where('user_id', $id)->latest()->get();
+        $addresses = $customer->customerAddresses;
+
+        $totalSpent = $orders->where('status', 'delivered')->sum('total');
+        $orderCount = $orders->count();
+
+        return view('admin.customer-detail', compact('customer', 'orders', 'addresses', 'totalSpent', 'orderCount'));
+    }
+
+    // -------------------------------------------------------------------------
+    // Login Activity
+    // -------------------------------------------------------------------------
+
+    public function login_activity(Request $request)
+    {
+        $query = LoginActivityLog::with('user')->latest('created_at');
+
+        if ($request->filled('email')) {
+            $query->where('email', 'like', '%'.$request->email.'%');
+        }
+        if ($request->filled('action')) {
+            $query->where('action', $request->action);
+        }
+
+        $logs = $query->paginate(30)->withQueryString();
+
+        return view('admin.login-activity', compact('logs'));
     }
 
 }

@@ -129,35 +129,62 @@
 
                                         <div class="col-sm-6">
                                             <div class="card-body">
-                                                <h5 class="card-title mb-4 text-success"> FROM: Sender Details</h5>
+                                                <h5 class="card-title mb-4 text-success">FROM: Sender Details</h5>
                                                 <div class="mb-3">
                                                     <input type="text" class="form-control" id="senderName"
-                                                        placeholder="Enter your name">
+                                                        name="gift_sender_name" placeholder="Your full name"
+                                                        value="{{ old('gift_sender_name') }}">
+                                                    @error('gift_sender_name') <span class="text-danger">{{ $message }}</span> @enderror
                                                 </div>
                                                 <div class="mb-3">
                                                     <input type="tel" class="form-control" id="senderPhone"
-                                                        placeholder="0300000000">
+                                                        name="gift_sender_phone" placeholder="0300000000"
+                                                        value="{{ old('gift_sender_phone') }}">
+                                                    @error('gift_sender_phone') <span class="text-danger">{{ $message }}</span> @enderror
                                                 </div>
+                                                @guest
                                                 <div class="mb-3">
-                                                    <textarea class="form-control" id="senderAddress" rows="3" placeholder="Address"></textarea>
+                                                    <input type="email" class="form-control" name="gift_sender_email"
+                                                        placeholder="Your email address"
+                                                        value="{{ old('gift_sender_email') }}">
+                                                    @error('gift_sender_email') <span class="text-danger">{{ $message }}</span> @enderror
+                                                </div>
+                                                @endguest
+                                                <div class="mb-3">
+                                                    <input type="text" class="form-control" id="senderAddress"
+                                                        name="gift_sender_address" placeholder="Your address (optional)"
+                                                        value="{{ old('gift_sender_address') }}">
                                                 </div>
                                             </div>
                                         </div>
                                         <div class="col-sm-6">
-                                            <h5 class="card-title mb-4 text-warning"><i class="bi bi-truck"></i> TO:
-                                                Delivery Details</h5>
+                                            <h5 class="card-title mb-4 text-warning">TO: Delivery Details</h5>
                                             <div class="mb-3">
                                                 <input type="text" class="form-control" id="receiverName"
-                                                    placeholder="Enter recipient name">
+                                                    name="gift_receiver_name" placeholder="Recipient full name"
+                                                    value="{{ old('gift_receiver_name') }}">
+                                                @error('gift_receiver_name') <span class="text-danger">{{ $message }}</span> @enderror
                                             </div>
                                             <div class="mb-3">
                                                 <input type="tel" class="form-control" id="receiverPhone"
-                                                    placeholder="0300000000">
+                                                    name="gift_receiver_phone" placeholder="0300000000"
+                                                    value="{{ old('gift_receiver_phone') }}">
+                                                @error('gift_receiver_phone') <span class="text-danger">{{ $message }}</span> @enderror
                                             </div>
                                             <div class="mb-3">
-                                                <textarea class="form-control" id="receiverAddress" rows="3" placeholder="Address"></textarea>
+                                                <input type="text" class="form-control" name="gift_receiver_city"
+                                                    placeholder="City" value="{{ old('gift_receiver_city') }}">
                                             </div>
-
+                                            <div class="mb-3">
+                                                <textarea class="form-control" id="receiverAddress"
+                                                    name="gift_receiver_address" rows="3"
+                                                    placeholder="Full delivery address">{{ old('gift_receiver_address') }}</textarea>
+                                                @error('gift_receiver_address') <span class="text-danger">{{ $message }}</span> @enderror
+                                            </div>
+                                            <div class="mb-3">
+                                                <textarea class="form-control" name="gift_message" rows="2"
+                                                    placeholder="Gift message (optional)">{{ old('gift_message') }}</textarea>
+                                            </div>
                                         </div>
 
                                     </div>

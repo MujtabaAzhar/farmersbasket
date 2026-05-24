@@ -31,4 +31,11 @@ return [
         ],
     ],
 
+    'whatsapp' => [
+        'enabled'   => env('WHATSAPP_ENABLED', false),
+        'api_url'   => env('WHATSAPP_API_URL', 'https://api.green-api.com'),
+        'instance'  => env('WHATSAPP_INSTANCE_ID'),
+        'token'     => env('WHATSAPP_API_TOKEN'),
+    ],
+
 ];

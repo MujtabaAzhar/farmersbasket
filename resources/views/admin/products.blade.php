@@ -47,14 +47,13 @@
                                                 <tr>
                                                     <th>#</th>
                                                     <th>Name</th>
-                                                    <th>Price</th>
-                                                    <th>SalePrice</th>
-                                                    <th>SKU</th>
+                                                    <th>Price Range</th>
+                                                    <th>Variants</th>
                                                     <th>Category</th>
                                                     <th>Brand</th>
                                                     <th>Featured</th>
                                                     <th>Stock</th>
-                                                    <th>Quantity</th>
+                                                    <th>Total Qty</th>
                                                     <th>Action</th>
                                                 </tr>
                                             </thead>
@@ -71,14 +70,24 @@
                                                             <div class="text-tiny mt-3">{{ $product->slug }}</div>
                                                         </div>
                                                     </td>
-                                                    <td>Rs {{ number_format($product->regular_price, 2) }}</td>
-                                                    <td>Rs {{ number_format($product->sale_price, 2) }}</td>
-                                                    <td>{{ $product->sku }}</td>
+                                                    <td>
+                                                        @php $minP = $product->variants->min('price'); $maxP = $product->variants->max('price'); @endphp
+                                                        @if($minP)
+                                                            Rs {{ number_format($minP, 0) }}{{ $minP != $maxP ? ' – ' . number_format($maxP, 0) : '' }}
+                                                        @else
+                                                            <span class="text-muted">—</span>
+                                                        @endif
+                                                    </td>
+                                                    <td>{{ $product->variants->count() }} variant{{ $product->variants->count() != 1 ? 's' : '' }}</td>
                                                     <td>{{ $product->category->name }}</td>
                                                     <td>{{ $product->brand->name }}</td>
-                                                    <td>{{$product->featured == 0 ? 'No' : 'Yes'}}</td>
-                                                    <td>{{ $product->stock_status }}</td>
-                                                    <td>{{ $product->quantity }}</td>
+                                                    <td>{{ $product->featured == 0 ? 'No' : 'Yes' }}</td>
+                                                    <td>
+                                                        <span class="badge {{ $product->stock_status === 'instock' ? 'bg-success' : 'bg-danger' }}">
+                                                            {{ $product->stock_status === 'instock' ? 'In Stock' : 'Out of Stock' }}
+                                                        </span>
+                                                    </td>
+                                                    <td>{{ $product->total_stock }}</td>
                                                     <td>
                                                         <div class="list-icon-function">
                                                             <a href="{{ route('admin.product.quantity') }}" title="Manage Quantities">

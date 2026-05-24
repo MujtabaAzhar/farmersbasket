@@ -237,17 +237,21 @@
                                      <li>
                                         <a href="{{ route('home.index') }}" >Home</a>
                                     </li>
-                                      <li>
-                                        <a href="{{ route('pos.index') }}" >POS</a>
-                                    </li>
+                                      @auth
+                                        @if(auth()->user()->utype === 'ADM' || auth()->user()->pos_role)
+                                        <li>
+                                            <a href="{{ route('pos.index') }}" >POS</a>
+                                        </li>
+                                        @endif
+                                      @endauth
                                       <li>
                                         <a href="{{ route('shop.index') }}" >Shop</a>
                                     </li>
                                       <li>
-                                        <a href="order-traking.html" >Order Tracking</a>
+                                        <a href="{{ route('home.order.tracking') }}" >Order Tracking</a>
                                     </li>
                                     <li>
-                                        <a href="about.html">About Us</a>
+                                        <a href="{{ route('home.about') }}">About Us</a>
                                     </li>
                                     <li>
                                         <a href="{{ route('home.contact') }}">Contact</a>
@@ -358,21 +362,18 @@
                             </h5>
                             <ul class="important-link d-grid gap-sm-2 gap-1">
                                 <li>
-                                    <a href="faqs.html" class="text-white opacity-75 fw-light link-effect">FAQs</a>
-                                </li>
-                                <li>
                                     <a href="order-traking.html"
-                                        class="text-white opacity-75 fw-light link-effect">Delivery</a>
+                                        class="text-white opacity-75 fw-light link-effect"> <i class="fab fa-whatsapp"></i>
+                                        Whatsapp</a>
                                 </li>
-                                <li>
-                                    <a href="contact.html"
-                                        class="text-white opacity-75 fw-light link-effect">Contact</a>
+                                 <li>
+                                   <h5 class="text-white mb-lg-3 mb-2">+92608362144</h5>
                                 </li>
-                                <li>
-                                    <a href="order-traking.html"
-                                        class="text-white opacity-75 fw-light link-effect">Store
-                                        Locator</a>
+                                  <li>
+                                     <p class="fs-16 white-clr opacity-75">info@farmersbasket.com</p>
                                 </li>
+                                
+                              
                             </ul>
                         </div>
                     </div>
@@ -383,21 +384,18 @@
                             </h5>
                             <ul class="important-link d-grid gap-sm-2 gap-1">
                                 <li>
-                                    <a href="about.html" class="text-white opacity-75 fw-light link-effect">Our
+                                    <a href="{{ route('home.about') }}" class="text-white opacity-75 fw-light link-effect">Our
                                         Story</a>
                                 </li>
                                 <li>
-                                    <a href="order-traking.html"
+                                    <a href="{{ route('home.order.tracking') }}"
                                         class="text-white opacity-75 fw-light link-effect">Delivery</a>
                                 </li>
                                 <li>
-                                    <a href="contact.html"
+                                    <a href="{{ route('home.contact') }}"
                                         class="text-white opacity-75 fw-light link-effect">Contact</a>
                                 </li>
-                                <li>
-                                    <a href="about.html" class="text-white opacity-75 fw-light link-effect">Store
-                                        Locator</a>
-                                </li>
+                               
                             </ul>
                         </div>
                     </div>
@@ -408,11 +406,12 @@
                             </h5>
                             <div class="footer-content">
                                 <p class="fs-16 white-clr opacity-75 mb-xl-3 mb-2">
-                                    1487 Rocky Horse Carre 1487Rocky
-                                    Arlington, TX 16819 United
+                                   Bakery building, Multan Rd, Lodhrān, Pakistan
                                 </p>
-                                <h5 class="text-white mb-lg-3 mb-2">1800 6565 222</h5>
-                                <p class="fs-16 white-clr opacity-75">info@gmail.com</p>
+                                <p> 
+                                    <a href="https://maps.app.goo.gl/WgeJUhPuZofSHtrJ7" class="fs-16 white-clr opacity-75">Store
+                                        Locator</a></p>
+                               
                             </div>
                         </div>
                     </div>
@@ -422,13 +421,13 @@
                                 CONNECT
                             </h5>
                             <p class="fs-16 white-clr opacity-75 mb-xl-3 mb-2">
-                                Absolutely loved the cozy vibe and Rich aroma! The coffee was perfectly brewed
+                               Loved the juicy sweetness and rich aroma! The mangoes were perfectly ripe.
                             </p>
-                            <form action="#0" class="d-flex form-outline">
+                            {{-- <form action="#0" class="d-flex form-outline">
                                 <input type="text" placeholder="Email Address">
                                 <button type="button" class="btn p-0 border-0"><img
                                         src="{{ asset('assets/img/icons/arrow-right-long.png') }}" alt="icon"></button>
-                            </form>
+                            </form> --}}
                         </div>
                     </div>
                 </div>

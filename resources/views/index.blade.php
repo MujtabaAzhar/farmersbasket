@@ -111,7 +111,7 @@
                                 <div>
                                     <h6 class="text-black pt-1"><a href="{{ route('shop.product.details', ['product_slug' => $fproduct->slug]) }}"
                                             class="text-black">{{ $fproduct->name }}</a></h6>
-                                    <span class="fs-14">( {{ $fproduct->quantity }} )</span>
+                                    <span class="fs-14">( {{ $fproduct->total_stock }} in stock )</span>
                                 </div>
                             </div>
                         </div>
@@ -197,13 +197,13 @@
                         <div class="cont">
                             <h6 class="mb-lg-1 mb-1"><a href="restaurant-details-2.html" class="link-effect">       {{ $product->name }}</a></h6>
                             <p class="fs-15 mb-lg-2 mb-1 max-w-200 lh-base">{{ $product->short_description }}</p>
-                            <h6 class="theme3-clr fs-16 fw-bold">   
-                                 @if ($product->sale_price)                           
-                                 <del class="fs-16 text4-clr">Rs {{ $product->regular_price }}</del> Rs {{ $product->sale_price }}
-                                  @else
-                                   Rs {{ $product->sale_price }}
-                                                            </h6>
-                                                            @endif
+                            <h6 class="theme3-clr fs-16 fw-bold">
+                                @if($product->min_price)
+                                    Rs {{ number_format($product->min_price, 0) }}+
+                                @else
+                                    —
+                                @endif
+                            </h6>
                                                            
                                                          
                                                        
