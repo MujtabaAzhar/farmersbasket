@@ -24,9 +24,23 @@ class NotificationService
             self::sendMail($email, new OrderConfirmation($order));
         }
 
-        if ($phone) {
-            $msg = self::buildOrderPlacedMessage($order);
-            self::sendWhatsApp($phone, $msg);
+        // Load gift relationship if not already loaded
+        if (!$order->relationLoaded('giftOrder')) {
+            $order->load('giftOrder');
+        }
+        $gift = $order->giftOrder;
+
+        if ($gift) {
+            // Sender confirmation
+            if ($gift->sender_phone) {
+                self::sendWhatsApp($gift->sender_phone, self::buildGiftSenderMessage($order, $gift));
+            }
+            // Receiver notification
+            if ($gift->receiver_phone) {
+                self::sendWhatsApp($gift->receiver_phone, self::buildGiftReceiverMessage($order, $gift));
+            }
+        } elseif ($phone) {
+            self::sendWhatsApp($phone, self::buildOrderPlacedMessage($order));
         }
     }
 
@@ -119,6 +133,69 @@ class NotificationService
         $lines[] = "";
         $lines[] = "Thank you for shopping at Farmer's Basket!";
         $lines[] = "For support: +92 301 7147110";
+
+        return implode("\n", $lines);
+    }
+
+    private static function buildGiftSenderMessage(Order $order, $gift): string
+    {
+        $name  = $gift->sender_name ?: 'Customer';
+        $lines = [
+            "Assalam-o-Alaikum {$name}! 🌿",
+            "",
+            "🎁 *Gift Order Confirmed!*",
+            "Order#: {$order->order_number}",
+            "Amount: Rs " . number_format($order->total, 0),
+            "Date  : " . $order->created_at->format('d M Y, h:i A'),
+            "",
+        ];
+
+        foreach ($order->orderItems as $item) {
+            $variant = $item->variant_label ? " ({$item->variant_label})" : '';
+            $lines[] = "• {$item->product?->name}{$variant} x{$item->quantity}";
+        }
+
+        $lines[] = "";
+        $lines[] = "🎀 Gift for: *{$gift->receiver_name}*";
+        if ($gift->receiver_city) {
+            $lines[] = "Delivery to: {$gift->receiver_city}";
+        }
+        if ($gift->gift_message) {
+            $lines[] = "";
+            $lines[] = "Your message: \"{$gift->gift_message}\"";
+        }
+
+        $lines[] = "";
+        $lines[] = "Thank you for shopping at Farmer's Basket!";
+        $lines[] = "For support: +92 301 7147110";
+
+        return implode("\n", $lines);
+    }
+
+    private static function buildGiftReceiverMessage(Order $order, $gift): string
+    {
+        $name   = $gift->receiver_name ?: 'there';
+        $sender = $gift->sender_name   ?: 'Someone';
+        $lines  = [
+            "Assalam-o-Alaikum {$name}! 🌿",
+            "",
+            "🎁 *You Have a Gift Coming!*",
+            "*{$sender}* has sent you a gift from Farmer's Basket.",
+            "",
+        ];
+
+        foreach ($order->orderItems as $item) {
+            $variant = $item->variant_label ? " ({$item->variant_label})" : '';
+            $lines[] = "• {$item->product?->name}{$variant} x{$item->quantity}";
+        }
+
+        if ($gift->gift_message) {
+            $lines[] = "";
+            $lines[] = "💌 \"{$gift->gift_message}\"";
+        }
+
+        $lines[] = "";
+        $lines[] = "Farmer's Basket — +92 301 7147110";
 
         return implode("\n", $lines);
     }

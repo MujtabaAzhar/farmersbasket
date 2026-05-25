@@ -512,8 +512,6 @@ class PosController extends Controller
             route('admin.order.details', $order->id)
         );
 
-        NotificationService::orderPlaced($order);
-
         // Save order items & deduct stock
         foreach ($cartItems as $item) {
             $variantId    = $item->options->variant_id ?? null;
@@ -556,7 +554,34 @@ class PosController extends Controller
                 'gift_message'     => $request->gift_message,
                 'gift_wrapping'    => (bool) $request->gift_wrapping,
             ]);
+
+            // Save receiver as a user for future lookups
+            $receiverPhone = trim($request->gift_receiver_phone ?? '');
+            if ($receiverPhone) {
+                $receiver = User::firstOrCreate(
+                    ['mobile' => $receiverPhone],
+                    [
+                        'name'     => $request->gift_receiver_name ?? 'Customer',
+                        'email'    => 'receiver' . time() . '@pos.local',
+                        'password' => bcrypt($receiverPhone),
+                    ]
+                );
+
+                // Save receiver's delivery address if provided and not already stored
+                $receiverAddress = trim($request->gift_receiver_address ?? '');
+                $receiverCity    = trim($request->gift_receiver_city    ?? '');
+                if ($receiverAddress) {
+                    CustomerAddress::firstOrCreate(
+                        ['customer_id' => $receiver->id, 'address' => $receiverAddress],
+                        ['title' => 'Home', 'city' => $receiverCity, 'is_default' => true]
+                    );
+                }
+            }
         }
+
+        // Send WhatsApp notifications after all related records are saved
+        $order->load('orderItems.product', 'giftOrder');
+        NotificationService::orderPlaced($order);
 
         // Save POS payment
         $cashReceived = $request->payment_method === 'cash' ? (float) $request->cash_received : null;

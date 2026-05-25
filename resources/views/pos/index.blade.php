@@ -83,7 +83,7 @@
             {{-- New: no customer found --}}
             <div id="cust-new-panel" style="display:none;">
                 <div class="cust-chip cust-chip-new">⚡ New Customer</div>
-                <input type="text" id="cust-new-name" class="cust-mini-input" placeholder="Customer Name (optional)">
+                <input type="text" id="cust-new-name" class="cust-mini-input" placeholder="Full Name *" autocomplete="off">
 
                 <div class="ot-toggle">
                     <button class="ot-btn active" id="ot-new-pickup" onclick="setOrderType('pickup')">🏪 Pickup</button>
@@ -91,13 +91,9 @@
                 </div>
 
                 <div id="new-booking-wrap" style="display:none;">
-                    <input type="text" id="cust-new-address" class="cust-mini-input" placeholder="Full delivery address *">
+                    <input type="text" id="cust-new-address" class="cust-mini-input" placeholder="Full delivery address *" autocomplete="off">
                     <input type="text" id="cust-new-city" list="pak-cities" class="cust-mini-input" placeholder="Delivery city *" autocomplete="off">
                 </div>
-
-                <label class="save-cust-label">
-                    <input type="checkbox" id="save-cust-chk"> Save this customer for future use
-                </label>
             </div>
 
         </div>
@@ -126,13 +122,11 @@
                 <input type="text" id="gift-receiver-name" placeholder="Receiver Name *" autocomplete="off">
                 <input type="text" id="gift-receiver-phone" placeholder="Receiver Phone * (03XXXXXXXXX)" autocomplete="off">
             </div>
+            <div id="gift-receiver-status" style="display:none;font-size:11px;margin:2px 0 4px;"></div>
 
             <h6>Delivery Information</h6>
             <input type="text" id="gift-address" placeholder="Full Delivery Address *" autocomplete="off">
-            <div class="gift-row">
-                <input type="text" id="gift-receiver-city" list="pak-cities" placeholder="Receiver City — type to search *" autocomplete="off">
-                <input type="date" id="gift-date" min="{{ date('Y-m-d') }}">
-            </div>
+            <input type="text" id="gift-receiver-city" list="pak-cities" placeholder="Receiver City — type to search *" autocomplete="off">
 
             <h6>Gift Message</h6>
             <textarea id="gift-message" rows="2" placeholder="Write a message for the recipient… (optional)" style="resize:none;"></textarea>
@@ -286,10 +280,41 @@ var posState = {
     total:             0,
 };
 
+// ─── Checkout Gate ────────────────────────────────────────────────────────────
+function canCheckout(){
+    if(posState.cartCount === 0) return false;
+
+    var phone = $('#cust-phone').val().trim();
+    if(phone.length < 7) return false;
+
+    var foundVisible = $('#cust-found-panel').is(':visible');
+    var newVisible   = $('#cust-new-panel').is(':visible');
+    if(!foundVisible && !newVisible) return false;
+
+    if(newVisible){
+        if(!$('#cust-new-name').val().trim()) return false;
+        if(posState.orderType === 'booking'){
+            if(!$('#cust-new-address').val().trim()) return false;
+            if(!$('#cust-new-city').val().trim()) return false;
+        }
+    }
+
+    if(foundVisible && posState.orderType === 'booking'){
+        if(!posState.selectedAddressId) return false;
+    }
+
+    return true;
+}
+
+function updateCheckoutBtn(){
+    $('#checkout-btn').prop('disabled', !canCheckout());
+}
+
 // ─── Page-load init ───────────────────────────────────────────────────────────
 $(function(){
-    $('#checkout-btn').prop('disabled', posState.cartCount === 0);
+    updateCheckoutBtn();
     renderSummary();
+    restoreFromSession();
 });
 
 // ─── Search Products ──────────────────────────────────────────────────────────
@@ -450,7 +475,7 @@ function posConfirmAddToCart(){
             $('#variantModal').modal('hide');
             $('#pos-cart-items').html(res.cart);
             posState.cartCount = res.count;
-            $('#checkout-btn').prop('disabled', res.count === 0);
+            updateCheckoutBtn();
             updateSummaryFromServer();
         } else {
             alert(res.message || 'Failed to add to cart.');
@@ -472,7 +497,7 @@ function posUpdateCart(rowId, qty){
             if(res.success){
                 $('#pos-cart-items').html(res.cart);
                 posState.cartCount = res.count;
-                $('#checkout-btn').prop('disabled', res.count === 0);
+                updateCheckoutBtn();
                 updateSummaryFromServer();
             }
         }
@@ -488,7 +513,7 @@ function posRemoveFromCart(rowId){
             if(res.success){
                 $('#pos-cart-items').html(res.cart);
                 posState.cartCount = res.count;
-                $('#checkout-btn').prop('disabled', res.count === 0);
+                updateCheckoutBtn();
                 updateSummaryFromServer();
             }
         }
@@ -572,6 +597,11 @@ $('#cust-phone').on('input', function(){
     if(phone.length < 7){ resetCustomerState(); return; }
     $('#cust-status').text('Searching…').css('color','#aaa');
     custLookupTimer = setTimeout(function(){ lookupPhone(phone); }, 500);
+    updateCheckoutBtn();
+});
+
+$('#cust-new-name, #cust-new-address, #cust-new-city').on('input', function(){
+    updateCheckoutBtn();
 });
 
 function lookupPhone(phone){
@@ -593,6 +623,7 @@ function handleFoundCustomer(customer, addresses){
     $('#cust-new-panel').hide();
     renderAddresses(addresses);
     setOrderType(posState.orderType);
+    updateCheckoutBtn();
 }
 
 function handleNewCustomer(){
@@ -604,7 +635,9 @@ function handleNewCustomer(){
     $('#cust-status').text('').css('color','#aaa');
     $('#cust-new-panel').show();
     $('#cust-found-panel').hide();
+    $('#cust-new-name, #cust-new-address, #cust-new-city').val('');
     setOrderType(posState.orderType);
+    updateCheckoutBtn();
 }
 
 function resetCustomerState(){
@@ -615,6 +648,7 @@ function resetCustomerState(){
     posState.selectedCity      = '';
     $('#cust-found-panel, #cust-new-panel').hide();
     $('#cust-status').text('').css('color','#aaa');
+    updateCheckoutBtn();
 }
 
 function clearCustomer(){
@@ -640,6 +674,8 @@ function setOrderType(type){
     $('#ot-new-pickup').toggleClass('active', type === 'pickup');
     $('#ot-new-booking').toggleClass('active', type === 'booking');
     $('#new-booking-wrap').toggle(type === 'booking');
+
+    updateCheckoutBtn();
 }
 
 // ─── Address Rendering ────────────────────────────────────────────────────────
@@ -679,6 +715,7 @@ function selectAddress(id, address, city){
     $('.addr-item').removeClass('selected');
     $('#addr-item-' + id).addClass('selected');
     cancelAddressForm();
+    updateCheckoutBtn();
 }
 
 function showAddressForm(){
@@ -742,8 +779,68 @@ function saveAddress(){
 
 // ─── Gift Toggle ─────────────────────────────────────────────────────────────
 function toggleGift(on){
-    if(on){ $('#gift-panel').slideDown(200); }
-    else  { $('#gift-panel').slideUp(200); }
+    if(on){
+        $('#gift-panel').slideDown(200);
+        prefillSenderFromCustomer();
+    } else {
+        $('#gift-panel').slideUp(200);
+    }
+}
+
+function prefillSenderFromCustomer(){
+    var name = '', phone = '', address = '', city = '';
+
+    if(posState.customer){
+        name  = posState.customer.name  || '';
+        phone = posState.customer.mobile || '';
+        if(posState.selectedAddress){
+            address = posState.selectedAddress;
+            city    = posState.selectedCity;
+        } else {
+            var def = posState.customerAddresses.find(function(a){ return a.is_default; });
+            if(!def && posState.customerAddresses.length) def = posState.customerAddresses[0];
+            if(def){ address = def.address; city = def.city; }
+        }
+    } else if($('#cust-new-panel').is(':visible')){
+        name  = $('#cust-new-name').val().trim();
+        phone = $('#cust-phone').val().trim();
+        if(posState.orderType === 'booking'){
+            address = $('#cust-new-address').val().trim();
+            city    = $('#cust-new-city').val().trim();
+        }
+    }
+
+    if(name    && !$('#gift-sender-name').val())    $('#gift-sender-name').val(name);
+    if(phone   && !$('#gift-sender-phone').val())   $('#gift-sender-phone').val(phone);
+    if(address && !$('#gift-sender-address').val()) $('#gift-sender-address').val(address);
+    if(city    && !$('#gift-sender-city').val())    $('#gift-sender-city').val(city);
+}
+
+// ─── Receiver Phone Lookup ────────────────────────────────────────────────────
+var receiverLookupTimer;
+$('#gift-receiver-phone').on('input', function(){
+    var phone = $(this).val().trim();
+    clearTimeout(receiverLookupTimer);
+    $('#gift-receiver-status').hide().text('');
+    if(phone.length < 7) return;
+    receiverLookupTimer = setTimeout(function(){ lookupReceiverPhone(phone); }, 500);
+});
+
+function lookupReceiverPhone(phone){
+    $.get('{{ route('pos.customer.lookup') }}', {phone: phone}, function(res){
+        if(res.found){
+            var c = res.customer;
+            if(!$('#gift-receiver-name').val().trim()) $('#gift-receiver-name').val(c.name);
+            var def = res.addresses && (res.addresses.find(function(a){ return a.is_default; }) || res.addresses[0]);
+            if(def){
+                if(!$('#gift-address').val().trim())       $('#gift-address').val(def.address);
+                if(!$('#gift-receiver-city').val().trim()) $('#gift-receiver-city').val(def.city);
+            }
+            $('#gift-receiver-status').text('✓ ' + c.name + ' found').css('color','#2ecc71').show();
+        } else {
+            $('#gift-receiver-status').text('New receiver').css('color','#aaa').show();
+        }
+    });
 }
 
 // ─── Hold Order ───────────────────────────────────────────────────────────────
@@ -758,8 +855,11 @@ function holdOrder(){
             $('#pos-cart-items').html(res.cart);
             $('#held-badge').text(res.heldCount);
             posState.cartCount = 0;
-            $('#checkout-btn').prop('disabled', true);
+            updateCheckoutBtn();
+            clearPosSession();
             resetGiftForm();
+            $('#pos-order-note').val('');
+            clearCustomer();
             updateSummaryFromServer();
         } else {
             alert(res.message);
@@ -782,6 +882,7 @@ function goToCheckout(){
     sessionStorage.setItem('pos_save_customer',     String(cust.save_customer || 0));
     sessionStorage.setItem('pos_coupon_code',       posState.couponCode || '');
     sessionStorage.setItem('pos_discount',          String(posState.couponDiscount || 0));
+    sessionStorage.setItem('pos_order_note',        $('#pos-order-note').val());
 
     var gift = getGiftData();
     if(gift){
@@ -795,7 +896,6 @@ function goToCheckout(){
         sessionStorage.setItem('pos_gift_receiver_address',  gift.receiver_address || '');
         sessionStorage.setItem('pos_gift_receiver_city',     gift.receiver_city || '');
         sessionStorage.setItem('pos_gift_message',           gift.gift_message || '');
-        sessionStorage.setItem('pos_delivery_date',          gift.delivery_date || '');
         sessionStorage.setItem('pos_gift_wrapping',          gift.gift_wrapping || '0');
     } else {
         sessionStorage.setItem('pos_is_gift', '0');
@@ -830,7 +930,7 @@ function getCustomerData(){
         address_id:       '',
         delivery_address: isBooking ? $('#cust-new-address').val().trim() : '',
         delivery_city:    isBooking ? $('#cust-new-city').val().trim() : '',
-        save_customer:    $('#save-cust-chk').is(':checked') ? 1 : 0,
+        save_customer:    1,
     };
 }
 
@@ -846,7 +946,6 @@ function getGiftData(){
         receiver_phone:   $('#gift-receiver-phone').val(),
         receiver_address: $('#gift-address').val(),
         receiver_city:    $('#gift-receiver-city').val(),
-        delivery_date:    $('#gift-date').val(),
         gift_message:     $('#gift-message').val(),
         gift_wrapping:    $('#gift-wrapping').is(':checked') ? 1 : 0,
     };
@@ -856,8 +955,96 @@ function resetGiftForm(){
     $('#gift-toggle').prop('checked', false);
     $('#gift-panel').hide();
     $('#gift-sender-name, #gift-sender-phone, #gift-sender-address, #gift-sender-city').val('');
-    $('#gift-receiver-name, #gift-receiver-phone, #gift-address, #gift-receiver-city, #gift-date, #gift-message').val('');
+    $('#gift-receiver-name, #gift-receiver-phone, #gift-address, #gift-receiver-city, #gift-message').val('');
+    $('#gift-receiver-status').hide().text('');
     $('#gift-wrapping').prop('checked', false);
+}
+
+// ─── Session Persistence ─────────────────────────────────────────────────────
+function clearPosSession(){
+    ['pos_customer_id','pos_customer_phone','pos_customer_name',
+     'pos_order_type','pos_address_id','pos_delivery_address','pos_delivery_city',
+     'pos_save_customer','pos_coupon_code','pos_discount','pos_order_note',
+     'pos_is_gift','pos_gift_sender_name','pos_gift_sender_phone',
+     'pos_gift_sender_address','pos_gift_sender_city','pos_gift_receiver_name',
+     'pos_gift_receiver_phone','pos_gift_receiver_address','pos_gift_receiver_city',
+     'pos_gift_message','pos_delivery_date','pos_gift_wrapping'
+    ].forEach(function(k){ sessionStorage.removeItem(k); });
+}
+
+function restoreFromSession(){
+    // Don't restore if cart is empty — order has been completed or nothing to restore
+    if(posState.cartCount === 0) return;
+
+    var phone = sessionStorage.getItem('pos_customer_phone');
+    if(!phone) return;
+
+    var customerId   = sessionStorage.getItem('pos_customer_id') || '';
+    var customerName = sessionStorage.getItem('pos_customer_name') || '';
+    var orderType    = sessionStorage.getItem('pos_order_type') || 'pickup';
+    var addressId    = sessionStorage.getItem('pos_address_id') || '';
+    var deliveryAddr = sessionStorage.getItem('pos_delivery_address') || '';
+    var deliveryCity = sessionStorage.getItem('pos_delivery_city') || '';
+    var couponCode   = sessionStorage.getItem('pos_coupon_code') || '';
+    var orderNote    = sessionStorage.getItem('pos_order_note') || '';
+    var isGift       = sessionStorage.getItem('pos_is_gift') === '1';
+
+    // Restore phone field and show clear button
+    $('#cust-phone').val(phone);
+    $('#cust-clear-btn').show();
+
+    if(customerId){
+        // Existing customer: re-lookup to get fresh address list
+        $('#cust-status').text('Restoring…').css('color','#aaa');
+        $.get('{{ route('pos.customer.lookup') }}', {phone: phone}, function(res){
+            if(res.found){
+                handleFoundCustomer(res.customer, res.addresses);
+                setOrderType(orderType);
+                if(orderType === 'booking' && addressId){
+                    // Give DOM a tick to show the delivery panel before selecting
+                    setTimeout(function(){
+                        selectAddress(parseInt(addressId), deliveryAddr, deliveryCity);
+                    }, 50);
+                }
+            } else {
+                handleNewCustomer();
+            }
+        }).fail(function(){
+            $('#cust-status').text('').css('color','#aaa');
+        });
+    } else {
+        // New customer: restore panel directly without a network call
+        handleNewCustomer();
+        $('#cust-new-name').val(customerName);
+        setOrderType(orderType);
+        if(orderType === 'booking'){
+            $('#cust-new-address').val(deliveryAddr);
+            $('#cust-new-city').val(deliveryCity);
+        }
+        updateCheckoutBtn();
+    }
+
+    if(couponCode){
+        $('#pos-coupon').val(couponCode);
+        applyCoupon();
+    }
+
+    if(orderNote) $('#pos-order-note').val(orderNote);
+
+    if(isGift){
+        $('#gift-toggle').prop('checked', true);
+        $('#gift-panel').show();
+        $('#gift-sender-name').val(sessionStorage.getItem('pos_gift_sender_name') || '');
+        $('#gift-sender-phone').val(sessionStorage.getItem('pos_gift_sender_phone') || '');
+        $('#gift-sender-address').val(sessionStorage.getItem('pos_gift_sender_address') || '');
+        $('#gift-sender-city').val(sessionStorage.getItem('pos_gift_sender_city') || '');
+        $('#gift-receiver-name').val(sessionStorage.getItem('pos_gift_receiver_name') || '');
+        $('#gift-receiver-phone').val(sessionStorage.getItem('pos_gift_receiver_phone') || '');
+        $('#gift-address').val(sessionStorage.getItem('pos_gift_receiver_address') || '');
+        $('#gift-receiver-city').val(sessionStorage.getItem('pos_gift_receiver_city') || '');
+        $('#gift-message').val(sessionStorage.getItem('pos_gift_message') || '');
+        $('#gift-wrapping').prop('checked', sessionStorage.getItem('pos_gift_wrapping') === '1');
+    }
 }
 
 // ─── Keyboard shortcuts ───────────────────────────────────────────────────────

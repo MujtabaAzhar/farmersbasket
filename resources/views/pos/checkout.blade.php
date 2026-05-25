@@ -317,7 +317,6 @@ var baseTotal = parseFloat('{{ $total }}') || 0;
     $('#f_gift_receiver_city').val(sessionStorage.getItem('pos_gift_receiver_city') || '');
     $('#f_gift_message').val(sessionStorage.getItem('pos_gift_message') || '');
     $('#f_gift_wrapping').val(sessionStorage.getItem('pos_gift_wrapping') || '0');
-    $('#f_delivery_date').val(sessionStorage.getItem('pos_delivery_date') || '');
 
     var couponCode    = sessionStorage.getItem('pos_coupon_code') || '';
     $('#f_coupon_code').val(couponCode);
@@ -446,5 +445,17 @@ function setVerified(val) {
         $('#vbtn-verified').removeClass('verified unverified');
     }
 }
+
+// Clear POS session when order is placed so stale data isn't restored on next visit
+$('#checkout-form').on('submit', function(){
+    ['pos_customer_id','pos_customer_phone','pos_customer_name',
+     'pos_order_type','pos_address_id','pos_delivery_address','pos_delivery_city',
+     'pos_save_customer','pos_coupon_code','pos_discount','pos_order_note',
+     'pos_is_gift','pos_gift_sender_name','pos_gift_sender_phone',
+     'pos_gift_sender_address','pos_gift_sender_city','pos_gift_receiver_name',
+     'pos_gift_receiver_phone','pos_gift_receiver_address','pos_gift_receiver_city',
+     'pos_gift_message','pos_delivery_date','pos_gift_wrapping'
+    ].forEach(function(k){ sessionStorage.removeItem(k); });
+});
 </script>
 @endpush

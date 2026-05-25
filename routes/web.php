@@ -124,6 +124,7 @@ Route::middleware(['auth',AuthAdmin::class])->group(function () {
     Route::delete('/cart/remove-coupon', [CartController::class, 'remove_coupon'])->name('cart.remove_coupon');
     Route::get('/admin/orders', [AdminController::class, 'order'])->name('admin.orders');
     Route::get('/admin/order/{order_id}/details', [AdminController::class, 'order_details'])->name('admin.order.details');
+    Route::get('/admin/order/{order_id}/track',   [AdminController::class, 'order_track'])->name('admin.order.track');
     Route::put('/admin/order/update-status', [AdminController::class, 'update_order_status'])->name('admin.order.status.update');
     Route::post('/admin/orders/bulk-status', [AdminController::class, 'bulk_update_orders'])->name('admin.orders.bulk.status');
     Route::get('/admin/slides', [AdminController::class, 'slides'])->name('admin.slides');

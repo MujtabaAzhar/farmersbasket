@@ -628,8 +628,54 @@ class AdminController extends Controller
         $coupon->delete();
         return redirect()->route('admin.coupons')->with('status', 'Coupon deleted successfully.');
     }
-    public function order(){
-        $orders = Order::orderBy('created_at','DESC')->paginate(12);
+    public function order(Request $request){
+        $query = Order::with(['posPayment', 'transaction'])->orderBy('created_at','DESC');
+
+        // Order ID / number (supports "FB-1001" or raw "1001")
+        if ($request->filled('order_id')) {
+            $raw = trim($request->order_id);
+            if (preg_match('/^FB-(\d+)$/i', $raw, $m)) {
+                $query->where('id', (int)$m[1] - 1000);
+            } elseif (is_numeric($raw)) {
+                $query->where('id', (int)$raw);
+            }
+        }
+
+        if ($request->filled('phone')) {
+            $query->where('phone', 'like', '%'.$request->phone.'%');
+        }
+
+        if ($request->filled('payment_method')) {
+            $value     = $request->payment_method;
+            $platforms = ['JazzCash','EasyPaisa','Meezan Bank','HBL Bank','Alfalah Bank'];
+
+            if (in_array($value, $platforms)) {
+                $query->whereHas('posPayment', fn($pq) => $pq->where('online_platform', $value));
+            } else {
+                $query->where(function ($q) use ($value) {
+                    $q->whereHas('posPayment', fn($pq) => $pq->where('method', $value))
+                      ->orWhereHas('transaction', fn($tq) => $tq->where('mode', $value));
+                });
+            }
+        }
+
+        if ($request->filled('courier')) {
+            $query->where('courier_name', 'like', '%'.$request->courier.'%');
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $orders = $query->paginate(15)->withQueryString();
         return view('admin.orders', compact('orders'));
     }
 
@@ -659,6 +705,27 @@ class AdminController extends Controller
             ->first();
 
         return view('admin.order-details', compact('order', 'orderItems', 'couriers', 'riders', 'existingShipment'));
+    }
+
+    public function order_track($order_id)
+    {
+        $order = Order::with([
+            'histories.creator',
+            'orderItems.product',
+            'posPayment',
+            'transaction',
+            'giftOrder',
+            'cashier',
+            'branch',
+        ])->findOrFail($order_id);
+
+        $pm      = $order->posPayment?->online_platform
+                ?? $order->posPayment?->method
+                ?? $order->transaction?->mode
+                ?? null;
+        $pmLabel = $pm ? ucwords(str_replace('_', ' ', $pm)) : null;
+
+        return view('admin.order-tracker', compact('order', 'pm', 'pmLabel'));
     }
 
     public function bulk_update_orders(Request $request)
