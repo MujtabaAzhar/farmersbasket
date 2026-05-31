@@ -1,192 +1,315 @@
 @extends('layouts.app')
 @section('content')
-    <!-- Hero section start -->
-    <section class="breadcrumb-section position-relative fix bg-cover"
-        style="background-image: url({{ asset('assets/img/hero/breadcrumb-banner.jpg') }});">
-        <div class="container">
-            <div class="breadcrumb-content">
-                <h2 class="white-clr fw-semibold text-center heading-font mb-2">
-                      Order Confirmation
-                </h2>
-                <ul class="breadcrumb align-items-center justify-content-center flex-wrap gap-3">
-                    <li>
-                        <a href="{{ route('home.index') }}">
-                            Home
-                        </a>
-                    </li>
 
-                    <li>
-                        <i class="fa-solid fa-angle-right"></i>
-                    </li>
-                    <li>
-                        Order Confirmation
-                    </li>
-                </ul>
-            </div>
+<section class="breadcrumb-section position-relative fix bg-cover"
+    style="background-image: url({{ asset('assets/img/hero/breadcrumb-banner.jpg') }});">
+    <div class="container">
+        <div class="breadcrumb-content">
+            <h2 class="white-clr fw-semibold text-center heading-font mb-2">Order Confirmation</h2>
+            <ul class="breadcrumb align-items-center justify-content-center flex-wrap gap-3">
+                <li><a href="{{ route('home.index') }}">Home</a></li>
+                <li><i class="fa-solid fa-angle-right"></i></li>
+                <li>Order Confirmation</li>
+            </ul>
         </div>
-        <img src="{{ asset('assets/img/home-1/home-shape-start.png') }}" alt="img"
-            class="bread-shape-start position-absolute">
-        <img src="{{ asset('assets/img/home-1/home-shape-end.png') }}" alt="img"
-            class="bread-shape-end position-absolute d-sm-block d-none">
-    </section>
+    </div>
+    <img src="{{ asset('assets/img/home-1/home-shape-start.png') }}" alt="img" class="bread-shape-start position-absolute">
+    <img src="{{ asset('assets/img/home-1/home-shape-end.png') }}" alt="img" class="bread-shape-end position-absolute d-sm-block d-none">
+</section>
 
-    <!--- SHop Section -->
-    <section class="shop-section position-relative z-1 fix section-padding">
-        <div class="container">
+<section class="section-padding" style="background:#f8f9fa;">
+    <div class="container">
 
-            <div class="row g-4">
-                <div class="col-lg-12">
-                     <div class="modal-content border-0 bg-transparent shadow-none">
+        {{-- Success Header --}}
+        <div class="text-center mb-5">
+            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+                 style="width:80px;height:80px;background:#e8f5e9;border:3px solid #4CAF50;">
+                <i class="fa-solid fa-check" style="font-size:36px;color:#4CAF50;"></i>
+            </div>
+            <h2 class="fw-bold text-dark mb-1">Order Placed Successfully!</h2>
+            <p class="text-muted fs-16 mb-0">
+                Thank you, <strong>{{ $order->name }}</strong>! We've received your order and will process it shortly.
+            </p>
+            <span class="badge mt-2 px-3 py-2" style="background:#e8f5e9;color:#2e7d32;font-size:14px;border-radius:20px;">
+                Order {{ $order->order_number }}
+            </span>
+        </div>
 
-            <!-- Thermal Receipt -->
-            <div class="thermal-receipt mx-auto">
+        <div class="row g-4">
 
-                <!-- Success Icon -->
-                <!-- <div class="text-center mb-3 no-print">
-                    <div class="success-check">
-                        <i class="bi bi-check-lg"></i>
-                    </div>
-                </div> -->
+            {{-- LEFT COLUMN --}}
+            <div class="col-lg-8">
 
-                <!-- Store Info -->
-                <div class="text-center receipt-header">
-                    <h4>FARMER'S BASKET</h4>
-                    <p>Fresh Mangoes & Bakery</p>
-                    <p>Multan, Punjab, Pakistan</p>
-                    <p>Phone: +92 300 1234567</p>
-                </div>
-
-                <div class="divider"></div>
-
-                <!-- Order Info -->
-                <div class="receipt-info">
-                    <div class="d-flex justify-content-between">
-                        <span>Order ID:</span>
-                        <strong>#FB1001</strong>
-                    </div>
-
-                    <div class="d-flex justify-content-between">
-                        <span>Tracking:</span>
-                        <strong>MNG-88291</strong>
-                    </div>
-
-                    <div class="d-flex justify-content-between">
-                        <span>Date:</span>
-                        <span>11-May-2026</span>
-                    </div>
-
-                    <div class="d-flex justify-content-between">
-                        <span>Payment:</span>
-                        <span>COD</span>
-                    </div>
-                </div>
-
-                <div class="divider"></div>
-
-                <!-- Customer -->
-                <div class="receipt-info mb-3">
-                    <strong>Customer</strong>
-                    <p class="mb-1">John Doe</p>
-                    <p class="mb-1">+92 300 1234567</p>
-                    <p class="mb-0">Multan, Punjab</p>
-                </div>
-
-                <div class="divider"></div>
-
-                <!-- Products -->
-                <div class="products-section">
-
-                    <div class="product-row">
-                        <div>
-                            <strong>Chaunsa Mango Box</strong>
-                            <small>2 x Rs. 2000</small>
+                {{-- Order Summary Card --}}
+                <div class="bg-white rounded-3 shadow-sm p-4 mb-4">
+                    <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                        <i class="fa-solid fa-receipt me-2" style="color:#4CAF50;"></i> Order Summary
+                    </h5>
+                    <div class="row g-3">
+                        <div class="col-sm-3">
+                            <small class="text-muted d-block">Order Number</small>
+                            <strong class="text-dark">{{ $order->order_number }}</strong>
                         </div>
-
-                        <div class="text-end">
-                            <strong>4000</strong>
+                        <div class="col-sm-3">
+                            <small class="text-muted d-block">Date</small>
+                            <strong class="text-dark">{{ $order->created_at->format('d M Y') }}</strong>
+                        </div>
+                        <div class="col-sm-3">
+                            <small class="text-muted d-block">Payment Method</small>
+                            <strong class="text-dark">
+                                @php
+                                    $modeLabels = [
+                                        'bank_transfer' => 'Bank Transfer',
+                                        'wallet'        => 'JazzCash / EasyPaisa',
+                                        'cod'           => 'Cash on Delivery',
+                                        'card'          => 'Card Payment',
+                                    ];
+                                    $mode = $order->transaction?->mode ?? 'N/A';
+                                @endphp
+                                {{ $modeLabels[$mode] ?? ucfirst($mode) }}
+                            </strong>
+                        </div>
+                        <div class="col-sm-3">
+                            <small class="text-muted d-block">Payment Status</small>
+                            @php $txStatus = $order->transaction?->status ?? 'pending'; @endphp
+                            <span class="badge px-3 py-1 rounded-pill"
+                                  style="background:{{ $txStatus === 'approved' ? '#e8f5e9' : '#fff3e0' }};
+                                         color:{{ $txStatus === 'approved' ? '#2e7d32' : '#e65100' }};
+                                         font-size:12px;">
+                                {{ $txStatus === 'approved' ? '✓ Approved' : '⏳ Pending' }}
+                            </span>
                         </div>
                     </div>
+                </div>
 
-                    <div class="product-row">
-                        <div>
-                            <strong>Langra Mango Box</strong>
-                            <small>1 x Rs. 1800</small>
+                {{-- Order Items Card --}}
+                <div class="bg-white rounded-3 shadow-sm p-4 mb-4">
+                    <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                        <i class="fa-solid fa-box-open me-2" style="color:#4CAF50;"></i> Items Ordered
+                    </h5>
+                    <div class="table-responsive">
+                        <table class="table table-borderless align-middle mb-0">
+                            <thead style="background:#f8f9fa;">
+                                <tr>
+                                    <th class="text-muted fw-semibold fs-14 py-2">Product</th>
+                                    <th class="text-muted fw-semibold fs-14 py-2 text-center">Qty</th>
+                                    <th class="text-muted fw-semibold fs-14 py-2 text-end">Price</th>
+                                    <th class="text-muted fw-semibold fs-14 py-2 text-end">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($order->orderItems as $item)
+                                <tr class="border-bottom">
+                                    <td class="py-3">
+                                        <div class="d-flex align-items-center gap-3">
+                                            @if($item->product?->image)
+                                            <img src="{{ asset('uploads/products/thumbnails/' . $item->product->image) }}"
+                                                 width="50" height="50" class="rounded-2 border object-fit-cover" alt="{{ $item->product->name }}">
+                                            @endif
+                                            <div>
+                                                <div class="fw-semibold text-dark fs-15">{{ $item->product?->name ?? 'Product' }}</div>
+                                                @if($item->variant_label)
+                                                    <span class="badge bg-light text-dark border" style="font-size:11px;">
+                                                        {{ $item->variant_label }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 text-center fw-semibold">{{ $item->quantity }}</td>
+                                    <td class="py-3 text-end">Rs {{ number_format($item->price, 0) }}</td>
+                                    <td class="py-3 text-end fw-bold">Rs {{ number_format($item->price * $item->quantity, 0) }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {{-- Totals --}}
+                    <div class="mt-3 pt-2">
+                        <div class="d-flex justify-content-end">
+                            <div style="min-width:280px;">
+                                <div class="d-flex justify-content-between py-1 text-muted fs-14">
+                                    <span>Subtotal</span>
+                                    <span>Rs {{ number_format($order->subtotal, 0) }}</span>
+                                </div>
+                                @if($order->discount > 0)
+                                <div class="d-flex justify-content-between py-1 text-muted fs-14">
+                                    <span>Discount</span>
+                                    <span class="text-danger">- Rs {{ number_format($order->discount, 0) }}</span>
+                                </div>
+                                @endif
+                                @if($order->tax > 0)
+                                <div class="d-flex justify-content-between py-1 text-muted fs-14">
+                                    <span>Tax</span>
+                                    <span>Rs {{ number_format($order->tax, 0) }}</span>
+                                </div>
+                                @endif
+                                <div class="d-flex justify-content-between py-1 text-muted fs-14">
+                                    <span>Shipping</span>
+                                    <span>Rs {{ number_format(config('cart.shipping', 0), 0) }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between py-2 mt-1 border-top fw-bold fs-16 text-dark">
+                                    <span>Total</span>
+                                    <span>Rs {{ number_format($order->total, 0) }}</span>
+                                </div>
+                            </div>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="text-end">
-                            <strong>1800</strong>
+                {{-- Delivery Details --}}
+                <div class="bg-white rounded-3 shadow-sm p-4 mb-4">
+                    <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                        <i class="fa-solid fa-location-dot me-2" style="color:#4CAF50;"></i>
+                        {{ $order->type === 'gift' ? 'Gift Delivery Details' : 'Delivery Details' }}
+                    </h5>
+                    <div class="row g-2">
+                        <div class="col-sm-6">
+                            <small class="text-muted d-block">Recipient Name</small>
+                            <strong>{{ $order->name }}</strong>
                         </div>
-                    </div>
-
-                </div>
-
-                <div class="divider"></div>
-
-                <!-- Totals -->
-                <div class="receipt-total">
-
-                    <div class="d-flex justify-content-between">
-                        <span>Subtotal</span>
-                        <span>5800</span>
-                    </div>
-
-                    <div class="d-flex justify-content-between">
-                        <span>Delivery</span>
-                        <span>200</span>
-                    </div>
-
-                    <div class="d-flex justify-content-between">
-                        <span>Discount</span>
-                        <span>-300</span>
-                    </div>
-
-                    <div class="divider"></div>
-
-                    <div class="d-flex justify-content-between grand-total">
-                        <strong>TOTAL</strong>
-                        <strong>Rs. 5700</strong>
-                    </div>
-
-                </div>
-
-                <div class="divider"></div>
-
-                <!-- Footer -->
-                <div class="text-center receipt-footer">
-                    <p>ORDER CONFIRMED</p>
-                    <p>Fresh mangoes are being packed 🍋</p>
-                    <p>Thank you for shopping!</p>
-
-                    <div class="barcode">
-                        || ||| |||| || |||||
+                        <div class="col-sm-6">
+                            <small class="text-muted d-block">Phone</small>
+                            <strong>{{ $order->phone }}</strong>
+                        </div>
+                        <div class="col-sm-6 mt-2">
+                            <small class="text-muted d-block">City</small>
+                            <strong>{{ $order->city }}</strong>
+                        </div>
+                        <div class="col-sm-6 mt-2">
+                            <small class="text-muted d-block">Address</small>
+                            <strong>{{ $order->address }}</strong>
+                        </div>
+                        @if($order->type === 'gift' && $order->giftOrder)
+                        <div class="col-12 mt-3">
+                            <div class="p-3 rounded-2" style="background:#fff9f0;border:1px solid #ffe0b2;">
+                                <strong style="color:#e65100;">🎁 Gift Order</strong>
+                                <div class="mt-2 fs-14 text-muted">
+                                    <div>From: <strong>{{ $order->giftOrder->sender_name }}</strong> ({{ $order->giftOrder->sender_phone }})</div>
+                                    @if($order->giftOrder->gift_message)
+                                    <div class="mt-1 fst-italic">"{{ $order->giftOrder->gift_message }}"</div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        @endif
                     </div>
                 </div>
 
-                <!-- Buttons -->
-                <div class="text-center mt-4 no-print">
+            </div>
 
-                    <button class="btn btn-dark px-4 py-2"
-                            onclick="window.print()">
-                        <i class="bi bi-printer me-2"></i>
-                        Print Slip
+            {{-- RIGHT COLUMN --}}
+            <div class="col-lg-4">
+
+                {{-- Order Progress --}}
+                <div class="bg-white rounded-3 shadow-sm p-4 mb-4">
+                    <h5 class="fw-bold text-dark border-bottom pb-2 mb-4">
+                        <i class="fa-solid fa-truck-fast me-2" style="color:#4CAF50;"></i> Order Progress
+                    </h5>
+                    @php
+                        $steps = [
+                            ['icon' => 'fa-circle-check', 'label' => 'Order Received',      'done' => true],
+                            ['icon' => 'fa-credit-card',  'label' => 'Payment Verification', 'done' => $txStatus === 'approved'],
+                            ['icon' => 'fa-box',          'label' => 'Order Packed',         'done' => in_array($order->status, ['packed','shipped','delivered'])],
+                            ['icon' => 'fa-truck',        'label' => 'Shipped',              'done' => in_array($order->status, ['shipped','delivered'])],
+                            ['icon' => 'fa-house-chimney','label' => 'Delivered',            'done' => $order->status === 'delivered'],
+                        ];
+                    @endphp
+                    <div class="d-flex flex-column gap-3">
+                        @foreach($steps as $i => $step)
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
+                                 style="width:36px;height:36px;
+                                        background:{{ $step['done'] ? '#e8f5e9' : '#f5f5f5' }};
+                                        border:2px solid {{ $step['done'] ? '#4CAF50' : '#ddd' }};">
+                                <i class="fa-solid {{ $step['icon'] }} fs-14"
+                                   style="color:{{ $step['done'] ? '#4CAF50' : '#bbb' }};"></i>
+                            </div>
+                            <div>
+                                <div class="fs-14 fw-semibold {{ $step['done'] ? 'text-dark' : 'text-muted' }}">
+                                    {{ $step['label'] }}
+                                </div>
+                                @if($step['done'])
+                                    <small class="text-success">Completed</small>
+                                @elseif($i === 1 && $txStatus !== 'approved')
+                                    <small class="text-warning">Awaiting your payment receipt</small>
+                                @else
+                                    <small class="text-muted">Pending</small>
+                                @endif
+                            </div>
+                        </div>
+                        @if(!$loop->last)
+                        <div style="width:2px;height:16px;background:#eee;margin-left:17px;"></div>
+                        @endif
+                        @endforeach
+                    </div>
+                </div>
+
+                {{-- What's Next Card --}}
+                <div class="rounded-3 p-4 mb-4" style="background:#e8f5e9;border:1px solid #c8e6c9;">
+                    <h6 class="fw-bold mb-3" style="color:#1b5e20;">📋 What Happens Next?</h6>
+                    <ol class="mb-0 ps-3" style="color:#2e7d32;font-size:14px;line-height:2;">
+                        <li>We review your order & payment receipt</li>
+                        <li>Payment confirmed → order is packed</li>
+                        <li>Shipped via courier within <strong>24–48 hrs</strong></li>
+                        <li>You receive tracking details on WhatsApp</li>
+                    </ol>
+                </div>
+
+                {{-- Action Buttons --}}
+                <div class="d-flex flex-column gap-2">
+                    {{-- WhatsApp Button --}}
+                    @php
+                        $waPhone = '923017147110';
+                        $itemLines = '';
+                        foreach($order->orderItems as $it) {
+                            $label = $it->variant_label ? " ({$it->variant_label})" : '';
+                            $itemLines .= "• {$it->product?->name}{$label} x{$it->quantity}\n";
+                        }
+                        $waMsg = "Assalam-o-Alaikum! 🌿\n\nMy order has been placed:\n\n"
+                               . "📦 Order#: {$order->order_number}\n"
+                               . "📅 Date: {$order->created_at->format('d M Y')}\n"
+                               . "💰 Total: Rs " . number_format($order->total, 0) . "\n"
+                               . "💳 Payment: " . ($modeLabels[$mode] ?? ucfirst($mode)) . "\n\n"
+                               . $itemLines
+                               . "\nPlease confirm my order. Thank you! 🙏";
+                        $waLink = "https://wa.me/{$waPhone}?text=" . rawurlencode($waMsg);
+                    @endphp
+                    <a href="{{ $waLink }}" target="_blank"
+                       class="btn d-flex align-items-center justify-content-center gap-2 fw-semibold py-3 rounded-3"
+                       style="background:#25D366;color:#fff;font-size:15px;">
+                        <i class="fa-brands fa-whatsapp fs-18"></i> Chat on WhatsApp
+                    </a>
+
+                    <button onclick="window.print()"
+                            class="btn btn-outline-dark d-flex align-items-center justify-content-center gap-2 fw-semibold py-3 rounded-3">
+                        <i class="fa-solid fa-print"></i> Print Receipt
                     </button>
 
-                    <button class="btn btn-outline-dark px-4 py-2 ms-2"
-                            data-bs-dismiss="modal">
-                        Done
-                    </button>
-
+                    <a href="{{ route('shop.index') }}"
+                       class="btn btn-outline-secondary d-flex align-items-center justify-content-center gap-2 fw-semibold py-3 rounded-3">
+                        <i class="fa-solid fa-bag-shopping"></i> Continue Shopping
+                    </a>
                 </div>
 
             </div>
         </div>
-                </div>
 
-            </div>
+    </div>
+</section>
 
-
-        </div>
-        <img src="assets/img/inner-global-pasta.png" alt="img"
-            class="position-absolute bottom-0 pb-100 end-0 float-bob-y mt-4 z-n1 d-sm-block d-none">
-    </section>
 @endsection
+
+@push('styles')
+<style>
+@media print {
+    .breadcrumb-section,
+    .no-print { display: none !important; }
+    section.section-padding { padding-top: 0 !important; }
+    .shadow-sm { box-shadow: none !important; }
+    .col-lg-4 .bg-white:last-of-type,
+    .col-lg-4 .d-flex.flex-column { display: none !important; }
+}
+</style>
+@endpush

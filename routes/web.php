@@ -185,6 +185,9 @@ Route::middleware(['auth',AuthAdmin::class])->group(function () {
     Route::get('/admin/settings', [AdminController::class, 'settings'])->name('admin.settings');
     Route::post('/admin/settings/profile', [AdminController::class, 'settings_profile'])->name('admin.settings.profile');
     Route::post('/admin/settings/password', [AdminController::class, 'settings_password'])->name('admin.settings.password');
+    Route::post('/admin/settings/shipping', [AdminController::class, 'settings_shipping'])->name('admin.settings.shipping');
+    Route::post('/admin/settings/couriers', [AdminController::class, 'settings_courier_add'])->name('admin.settings.courier.add');
+    Route::post('/admin/settings/couriers/delete', [AdminController::class, 'settings_courier_delete'])->name('admin.settings.courier.delete');
 
     // POS Sessions & Login Activity
     Route::get('/admin/pos-sessions', [AdminController::class, 'pos_sessions'])->name('admin.pos.sessions');

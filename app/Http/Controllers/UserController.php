@@ -16,10 +16,29 @@ use Carbon\Carbon;
 class UserController extends Controller
 {
     public function index(){
-        return view('user.index');
+        $userId = Auth::id();
+        $orders = Order::where('user_id', $userId)->get();
+
+        $stats = [
+            'total'     => $orders->count(),
+            'pending'   => $orders->where('status', 'ordered')->count(),
+            'delivered' => $orders->where('status', 'delivered')->count(),
+            'cancelled' => $orders->where('status', 'canceled')->count(),
+            'spent'     => $orders->whereNotIn('status', ['canceled'])->sum('total'),
+        ];
+
+        $recentOrders = Order::where('user_id', $userId)
+                             ->orderBy('created_at', 'DESC')
+                             ->limit(5)
+                             ->get();
+
+        return view('user.index', compact('stats', 'recentOrders'));
     }
     public function orders(){
-        $orders = Order::where('user_id', Auth::user()->id)->orderBy('created_at', 'DESC')->paginate(10);
+        $orders = Order::with(['orderItems.product', 'transaction'])
+                       ->where('user_id', Auth::user()->id)
+                       ->orderBy('created_at', 'DESC')
+                       ->paginate(10);
         return view('user.orders', compact('orders'));
     }
     public function order_details($order_id)

@@ -164,11 +164,15 @@
             <h5>Order Totals</h5>
             <div class="totals-row"><span>Subtotal</span><span>Rs {{ number_format($subtotal, 2) }}</span></div>
             <div class="totals-row"><span>Tax</span><span>Rs {{ number_format($tax, 2) }}</span></div>
+            <div class="totals-row" id="shipping-row" style="display:none;">
+                <span>Shipping</span>
+                <span id="shipping-display" style="color:#2ecc71;">Rs {{ number_format($shippingFee, 2) }}</span>
+            </div>
             <div class="totals-row" id="discount-row" style="display:none;">
                 <span>Coupon <span id="s-coupon-badge" style="background:#e8f5e9;color:#2e7d32;border:1px solid #c8e6c9;border-radius:12px;padding:1px 8px;font-size:11px;font-weight:700;"></span></span>
                 <span id="discount-display" style="color:#e74c3c;">-Rs 0</span>
             </div>
-            <div class="totals-row grand"><span>TOTAL</span><span id="grand-total-display">Rs {{ number_format($total, 2) }}</span></div>
+            <div class="totals-row grand"><span>TOTAL</span><span id="grand-total-display">Rs {{ number_format($baseTotal, 2) }}</span></div>
         </div>
     </div>
 
@@ -201,10 +205,33 @@
             <input type="hidden" name="gift_wrapping"    id="f_gift_wrapping"         value="0">
             <input type="hidden" name="delivery_date"    id="f_delivery_date"         value="">
             <input type="hidden" name="payment_verified" id="f_payment_verified"      value="0">
+            <input type="hidden" name="courier_name"     id="f_courier_name"          value="">
+            <input type="hidden" name="courier_fee"      id="f_courier_fee"           value="">
 
             @if($errors->any())
             <div style="background:#fde8e8; border: 1px solid #f5c6c6; border-radius:8px; padding:10px 14px; margin-bottom:12px; font-size:12px; color:#c0392b;">
                 @foreach($errors->all() as $e) <div>• {{ $e }}</div> @endforeach
+            </div>
+            @endif
+
+            {{-- Courier Selection (delivery / gift orders only) --}}
+            @if(count($courierCompanies))
+            <div class="section-card" id="courier-section" style="display:none;">
+                <h5>Courier / Shipping</h5>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;" id="courier-btns">
+                    @foreach($courierCompanies as $i => $c)
+                    <button type="button"
+                            class="courier-btn"
+                            data-name="{{ $c['name'] }}"
+                            data-fee="{{ $c['fee'] }}"
+                            onclick="selectCourier(this)"
+                            style="flex:1;min-width:110px;padding:10px 8px;border:2px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;text-align:center;font-size:13px;font-weight:600;transition:all .15s;color:#444;">
+                        <div>{{ $c['name'] }}</div>
+                        <div style="font-size:12px;color:#888;font-weight:400;margin-top:2px;">Rs {{ number_format($c['fee'], 0) }}</div>
+                    </button>
+                    @endforeach
+                </div>
+                <div id="courier-none-msg" style="font-size:12px;color:#e67e22;margin-top:6px;display:none;">Please select a courier to proceed.</div>
             </div>
             @endif
 
@@ -282,7 +309,7 @@
             {{-- Amount to collect --}}
             <div class="collect-banner">
                 <div class="label">Amount to Collect</div>
-                <div class="amount" id="total-to-collect">Rs {{ number_format($total, 2) }}</div>
+                <div class="amount" id="total-to-collect">Rs {{ number_format($baseTotal, 2) }}</div>
             </div>
 
             <button type="submit" class="btn-place-order" id="btn-place">Place Order</button>
@@ -294,7 +321,49 @@
 @push('scripts')
 <script>
 // Must be declared before the IIFE so recalcTotal() has the value when it runs.
-var baseTotal = parseFloat('{{ $total }}') || 0;
+var baseTotal        = parseFloat('{{ $baseTotal }}') || 0;
+var defaultShipping  = parseFloat('{{ $shippingFee }}') || 0;
+var isDelivery       = (sessionStorage.getItem('pos_order_type') === 'booking') || (sessionStorage.getItem('pos_is_gift') === '1');
+var courierCompanies = @json($courierCompanies);
+var orderShipping    = isDelivery ? defaultShipping : 0;
+
+// Show courier panel for delivery orders
+if (isDelivery && courierCompanies.length > 0) {
+    var cs = document.getElementById('courier-section');
+    if (cs) cs.style.display = '';
+    // Restore the courier selected on the POS index page, otherwise pick the first
+    var savedCourierName = sessionStorage.getItem('pos_courier_name') || '';
+    var matched = null;
+    if (savedCourierName) {
+        matched = document.querySelector('.courier-btn[data-name="' + savedCourierName.replace(/"/g, '\\"') + '"]');
+    }
+    var toSelect = matched || document.querySelector('.courier-btn');
+    if (toSelect) selectCourier(toSelect);
+}
+
+function selectCourier(btn) {
+    document.querySelectorAll('.courier-btn').forEach(function(b) {
+        b.style.borderColor = '#ddd';
+        b.style.background  = '#fff';
+        b.style.color       = '#444';
+    });
+    btn.style.borderColor = '#2ecc71';
+    btn.style.background  = '#f0fdf4';
+    btn.style.color       = '#1a6b3a';
+
+    var name = btn.dataset.name;
+    var fee  = parseFloat(btn.dataset.fee) || 0;
+    $('#f_courier_name').val(name);
+    $('#f_courier_fee').val(fee);
+    orderShipping = fee;
+    recalcTotal(parseFloat($('#f_discount').val()) || 0);
+    document.getElementById('courier-none-msg').style.display = 'none';
+}
+
+// If no couriers configured, use default shipping fee for delivery
+if (isDelivery && courierCompanies.length === 0) {
+    orderShipping = defaultShipping;
+}
 
 // ─── Restore sessionStorage state ─────────────────────────────────────────────
 (function () {
@@ -389,10 +458,16 @@ function buildCustomerSummary() {
 // ─── Totals ────────────────────────────────────────────────────────────────────
 function recalcTotal(disc) {
     disc = parseFloat(disc) || 0;
-    var newTotal = Math.max(0, baseTotal - disc);
+    var newTotal = Math.max(0, baseTotal + orderShipping - disc);
     $('#f_discount').val(disc);
     $('#grand-total-display').text('Rs ' + newTotal.toLocaleString('en-PK', { minimumFractionDigits: 2 }));
     $('#total-to-collect').text('Rs ' + newTotal.toLocaleString('en-PK', { minimumFractionDigits: 2 }));
+    if (orderShipping > 0) {
+        $('#shipping-display').text('Rs ' + orderShipping.toLocaleString('en-PK', { minimumFractionDigits: 2 }));
+        $('#shipping-row').show();
+    } else {
+        $('#shipping-row').hide();
+    }
     if (disc > 0) {
         $('#discount-display').text('-Rs ' + disc.toLocaleString('en-PK', { minimumFractionDigits: 2 }));
         $('#discount-row').show();
@@ -403,7 +478,7 @@ function recalcTotal(disc) {
 }
 
 function getCurrentTotal() {
-    return Math.max(0, baseTotal - (parseFloat($('#f_discount').val()) || 0));
+    return Math.max(0, baseTotal + orderShipping - (parseFloat($('#f_discount').val()) || 0));
 }
 
 function calcChange() {
@@ -446,6 +521,15 @@ function setVerified(val) {
     }
 }
 
+// Show loader on form submit
+$('#checkout-form').on('submit', function(){
+    var courier = $('#f_courier_name').val();
+    var method  = $('#payment_method').val();
+    var methodLabel = method === 'cash' ? 'Cash' : 'Online Transfer';
+    var sub = courier ? 'Via ' + courier + ' · ' + methodLabel : methodLabel;
+    PosLoader.show('Placing Order', sub);
+});
+
 // Clear POS session when order is placed so stale data isn't restored on next visit
 $('#checkout-form').on('submit', function(){
     ['pos_customer_id','pos_customer_phone','pos_customer_name',
@@ -454,7 +538,8 @@ $('#checkout-form').on('submit', function(){
      'pos_is_gift','pos_gift_sender_name','pos_gift_sender_phone',
      'pos_gift_sender_address','pos_gift_sender_city','pos_gift_receiver_name',
      'pos_gift_receiver_phone','pos_gift_receiver_address','pos_gift_receiver_city',
-     'pos_gift_message','pos_delivery_date','pos_gift_wrapping'
+     'pos_gift_message','pos_delivery_date','pos_gift_wrapping',
+     'pos_courier_name','pos_courier_fee'
     ].forEach(function(k){ sessionStorage.removeItem(k); });
 });
 </script>

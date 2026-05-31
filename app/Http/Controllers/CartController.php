@@ -18,6 +18,7 @@ use App\Models\GiftOrder;
 use App\Models\InventoryLog;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
 
@@ -25,7 +26,7 @@ class CartController extends Controller
 {
     public function index()
     {
-         $shipping_fee = config('cart.shipping', 0);
+         $shipping_fee = Setting::get('shipping_fee', config('cart.shipping', 0));
         $items = Cart::instance('cart')->content();
         return view('cart', compact('items', 'shipping_fee'));
     }
@@ -100,7 +101,7 @@ class CartController extends Controller
 
     public function calculate_discount()
     {
-        $shipping_fee = config('cart.shipping', 0);
+        $shipping_fee = Setting::get('shipping_fee', config('cart.shipping', 0));
         $discount = 0;
         if(Session::has('coupon')){
             $subtotal = str_replace(',', '', Cart::instance('cart')->subtotal());
@@ -149,7 +150,7 @@ class CartController extends Controller
         // Build conditional validation rules
         $rules = [
             'gift'     => 'required|in:Yes,No',
-            'mode'     => 'required',
+            'mode'     => 'required|in:bank_transfer,wallet',
             'zip'      => 'required',
             'state'    => 'required',
             'locality' => 'required',
@@ -157,24 +158,36 @@ class CartController extends Controller
             'landmark' => 'required',
         ];
 
+        if ($request->mode === 'bank_transfer') {
+            $rules['picture'] = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
+        } elseif ($request->mode === 'wallet') {
+            $rules['wallet_picture'] = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
+        }
+
         if ($isGift) {
             $rules['gift_sender_name']       = 'required|string|max:255';
-            $rules['gift_sender_phone']      = 'required|string|max:20';
+            $rules['gift_sender_phone']      = 'required|regex:/^03[0-9]{9}$/';
             $rules['gift_receiver_name']     = 'required|string|max:255';
-            $rules['gift_receiver_phone']    = 'required|string|max:20';
+            $rules['gift_receiver_phone']    = 'required|regex:/^03[0-9]{9}$/';
             $rules['gift_receiver_address']  = 'required|string';
             if (!Auth::check()) {
                 $rules['gift_sender_email'] = 'required|email';
             }
         } else {
-            $rules['name']    = 'required';
+            $rules['name']    = 'required|string|max:255';
             $rules['email']   = 'required|email';
-            $rules['phone']   = 'required';
+            $rules['phone']   = 'required|regex:/^03[0-9]{9}$/';
             $rules['city']    = 'required';
-            $rules['address'] = 'required';
+            $rules['address'] = 'required|string|max:500';
         }
 
-        $request->validate($rules);
+        $request->validate($rules, [
+            'phone.regex'                => 'Phone must be a valid Pakistani number (03xxxxxxxxx).',
+            'gift_sender_phone.regex'    => 'Sender phone must be a valid Pakistani number (03xxxxxxxxx).',
+            'gift_receiver_phone.regex'  => 'Receiver phone must be a valid Pakistani number (03xxxxxxxxx).',
+            'picture.required'           => 'Please upload your bank payment receipt.',
+            'wallet_picture.required'    => 'Please upload your wallet transfer screenshot.',
+        ]);
 
         // Resolve the user
         if (Auth::check()) {
@@ -191,7 +204,6 @@ class CartController extends Controller
                 $user->password = Hash::make($lookup_phone);
                 $user->save();
             }
-            Auth::login($user);
             $user_id = $user->id;
         }
 
@@ -286,7 +298,7 @@ class CartController extends Controller
                 'order_id'          => $order->id,
                 'sender_name'       => $request->gift_sender_name,
                 'sender_phone'      => $request->gift_sender_phone,
-                'sender_email'      => Auth::user()->email ?? $request->gift_sender_email,
+                'sender_email'      => Auth::user()?->email ?? $request->gift_sender_email,
                 'sender_address'    => $request->gift_sender_address,
                 'receiver_name'     => $request->gift_receiver_name,
                 'receiver_phone'    => $request->gift_receiver_phone,
@@ -296,12 +308,23 @@ class CartController extends Controller
             ]);
         }
 
+        // Save payment receipt file
+        $receiptPath = null;
+        $receiptField = $request->mode === 'bank_transfer' ? 'picture' : 'wallet_picture';
+        if ($request->hasFile($receiptField) && $request->file($receiptField)->isValid()) {
+            $file = $request->file($receiptField);
+            $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('uploads/payment_receipts'), $filename);
+            $receiptPath = $filename;
+        }
+
         // Record transaction
         $transaction = new Transection();
-        $transaction->user_id  = $user_id;
-        $transaction->order_id = $order->id;
-        $transaction->mode     = $request->mode;
-        $transaction->status   = 'pending';
+        $transaction->user_id          = $user_id;
+        $transaction->order_id         = $order->id;
+        $transaction->mode             = $request->mode;
+        $transaction->payment_receipt  = $receiptPath;
+        $transaction->status           = 'pending';
         $transaction->save();
 
         Cart::instance('cart')->destroy();
@@ -321,7 +344,7 @@ class CartController extends Controller
         }    
 
         // Get shipping price from config
-        $shipping_fee = config('cart.shipping', 0);
+        $shipping_fee = Setting::get('shipping_fee', config('cart.shipping', 0));
 
         if(Session::has('coupon'))
         {
@@ -357,7 +380,8 @@ class CartController extends Controller
         {
             if(Session::has('order_id'))
             {
-                $order = Order::find(Session::get('order_id'));
+                $order = Order::with(['orderItems.product', 'orderItems.variant', 'transaction', 'giftOrder'])
+                              ->find(Session::get('order_id'));
                 return view('order-confirmation', compact('order'));
             }
             return redirect()->route('cart.index');

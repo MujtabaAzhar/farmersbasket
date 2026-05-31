@@ -150,11 +150,6 @@
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-xl-3 gap-2 flex-wrap mb-40 wow fadeInUp" data-wow-delay="0.8s">
-                            @if (Cart::instance('cart')->content()->where('id', $product->id)->count() > 0)
-                            <a href="{{ route('cart.index') }}" type="button" class="theme-btn h-44px">
-                                <img src="{{ asset('assets/img/icons/cart.png') }}" alt="img"> Go To Cart
-                            </a>
-                            @else
                             <form name="addtocart-form" method="post" action="{{ route('cart.add') }}">
                             @csrf
                             <input type="number" name="quantity" value="1" min="1" class="d-none">
@@ -162,14 +157,17 @@
                             <input type="hidden" name="name" value="{{ $product->name }}">
                             <input type="hidden" name="price" id="current-price-value">
                             <input type="hidden" id="form-variant-id" name="variant_id" value="">
-                            <div class="product-single__addtocart">
+                            <div class="product-single__addtocart d-flex align-items-center gap-2 flex-wrap">
                                 <button type="submit" class="theme-btn h-44px" id="add-to-cart-btn">
-                                <img src="{{ asset('assets/img/icons/cart.png') }}" alt="img"> Add To Cart
-                            </button>
+                                    <img src="{{ asset('assets/img/icons/cart.png') }}" alt="img"> Add To Cart
+                                </button>
+                                @if (Cart::instance('cart')->content()->where('id', $product->id)->count() > 0)
+                                <a href="{{ route('cart.index') }}" class="btn btn-outline-secondary h-44px d-flex align-items-center px-3">
+                                    View Cart
+                                </a>
+                                @endif
                             </div>
                             </form>
-                            
-                               @endif
                              @if ($wishlisted)
                                 <form action="{{ route('wishlist.remove.product', $product->id) }}" method="POST" id="frm-remove-item">
                                     @csrf

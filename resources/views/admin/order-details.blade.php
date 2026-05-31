@@ -134,6 +134,17 @@
                             <td class="text-end">Rs {{ number_format($order->tax, 2) }}</td>
                         </tr>
                         @endif
+                        @if($order->shipping > 0)
+                        <tr>
+                            <td class="detail-label ps-0">
+                                Shipping
+                                @if($order->courier_name)
+                                    <span style="font-weight:400;color:#888;">({{ $order->courier_name }})</span>
+                                @endif
+                            </td>
+                            <td class="text-end">Rs {{ number_format($order->shipping, 2) }}</td>
+                        </tr>
+                        @endif
                         <tr class="border-top">
                             <td class="detail-label ps-0 pt-2" style="font-size:14px;">Total</td>
                             <td class="text-end fw-bold pt-2" style="font-size:16px;">Rs {{ number_format($order->total, 2) }}</td>

@@ -54,12 +54,8 @@
 
         <div class="receipt-body">
             <div class="receipt-meta">
-                <span class="bo">{{ $order->order_number }}</span>
-                <span>{{ $order->created_at->format('d M Y') }}</span>
-            </div>
-            <div class="receipt-meta" style="margin-top:-8px;">
-                <span>Salesman: {{ $order->cashier?->name ?? 'N/A' }}</span>
-                <span>{{ $order->created_at->format('h:i A') }}</span>
+                <span class="bo">Order # {{ $order->order_number }}</span>
+                <span>{{ $order->created_at->format('d M Y, h:i A') }}</span>
             </div>
              <div class="receipt-meta" style="margin-top:-8px;">
                 <span>Customer Name: {{ $order->user?->name ?? $order->name ?? 'N/A' }}</span>
@@ -96,6 +92,12 @@
 
             <div class="receipt-total-row"><span>Subtotal</span><span>Rs {{ number_format($order->subtotal, 2) }}</span></div>
             <div class="receipt-total-row"><span>Tax</span><span>Rs {{ number_format($order->tax, 2) }}</span></div>
+            @if($order->shipping > 0)
+            <div class="receipt-total-row">
+                <span>Shipping{{ $order->courier_name ? ' (' . $order->courier_name . ')' : '' }}</span>
+                <span>Rs {{ number_format($order->shipping, 2) }}</span>
+            </div>
+            @endif
             @if($order->discount > 0)
             <div class="receipt-total-row"><span>Discount</span><span>-Rs {{ number_format($order->discount, 2) }}</span></div>
             @endif
@@ -157,14 +159,12 @@
         {{-- Order meta --}}
         <div class="row sm">
             <span>Order#: {{ $order->order_number }}</span>
-            <span>{{ $order->created_at->format('d-M-Y') }}</span>
+            <span>{{ $order->created_at->format('d M Y, h:i A') }}</span>
         </div>
         <div class="row sm">
-            <span>Cashier: {{ $order->cashier?->name ?? 'N/A' }}</span>
-            <span>{{ $order->created_at->format('h:i A') }}</span>
+            <span>{{ $order->user?->name ?? $order->name ?? 'N/A' }}</span>
+            <span>{{ $order->user?->mobile ?? $order->phone ?? 'N/A' }}</span>
         </div>
-        <div class="sm">Customer: {{ $order->user?->name ?? $order->name ?? 'N/A' }}</div>
-        <div class="sm">Phone   : {{ $order->user?->mobile ?? $order->phone ?? 'N/A' }}</div>
 
         {{-- Gift order --}}
         @if($order->giftOrder)
@@ -198,6 +198,12 @@
         <div class="div-dash"></div>
         <div class="row sm"><span class="lbl">Subtotal</span><span>Rs {{ number_format($order->subtotal, 2) }}</span></div>
         <div class="row sm"><span class="lbl">Tax</span><span>Rs {{ number_format($order->tax, 2) }}</span></div>
+        @if($order->shipping > 0)
+            <div class="row sm">
+                <span class="lbl">Shipping{{ $order->courier_name ? ' (' . $order->courier_name . ')' : '' }}</span>
+                <span>Rs {{ number_format($order->shipping, 2) }}</span>
+            </div>
+        @endif
         @if($order->discount > 0)
             <div class="row sm"><span class="lbl">Discount</span><span>-Rs {{ number_format($order->discount, 2) }}</span></div>
         @endif
@@ -279,7 +285,7 @@ var stickerData = @json($stickerPayload);
 // ── Sticker printer ───────────────────────────────────────────────────────────
 function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-function buildSticker(item) {
+function buildSticker(item, totalQty) {
     var d = stickerData;
     var s = '<div class="sticker">';
 
@@ -291,7 +297,7 @@ function buildSticker(item) {
     s += '<div class="s-row"><span class="s-lbl">Name   :</span> <span>' + escH(d.to.name)    + '</span></div>';
     s += '<div class="s-row"><span class="s-lbl">Phone  :</span> <span>' + escH(d.to.phone)   + '</span></div>';
     if (d.to.address) s += '<div class="s-row"><span class="s-lbl">Address:</span> <span>' + escH(d.to.address) + '</span></div>';
-    if (d.to.city)    s += '<div class="s-row"><span class="s-lbl">City   :</span> <span>' + escH(d.to.city)    + '</span></div>';
+    if (d.to.city)    s += '<div class="s-row s-city"><span class="s-lbl">City   :</span> <span>' + escH(d.to.city) + '</span></div>';
 
     // FROM (gift only)
     if (d.isGift && d.from) {
@@ -299,7 +305,6 @@ function buildSticker(item) {
         s += '<div class="s-section">FROM</div>';
         s += '<div class="s-row"><span class="s-lbl">Name   :</span> <span>' + escH(d.from.name)  + '</span></div>';
         s += '<div class="s-row"><span class="s-lbl">Phone  :</span> <span>' + escH(d.from.phone) + '</span></div>';
-        if (d.from.address) s += '<div class="s-row"><span class="s-lbl">Address:</span> <span>' + escH(d.from.address) + '</span></div>';
         if (d.from.city)    s += '<div class="s-row"><span class="s-lbl">City   :</span> <span>' + escH(d.from.city)    + '</span></div>';
         if (d.message) {
             s += '<div class="s-dash"></div>';
@@ -310,7 +315,7 @@ function buildSticker(item) {
     // Product box
     s += '<div class="s-dash"></div>';
     s += '<div class="s-product">';
-    s += '<div class="s-pname">' + escH(item.name) + (item.variant ? ' &ndash; ' + escH(item.variant) : '') + '</div>';
+    s += '<div class="s-pname">' + escH(item.name) + (item.variant ? ' &ndash; ' + escH(item.variant) : '') + ' - ' + totalQty + '</div>';
     s += '<div class="s-order">Order# ' + escH(d.orderNumber) + '</div>';
     s += '</div>';
 
@@ -328,18 +333,21 @@ function printStickers() {
         '.s-brand   { text-align:center; font-weight:bold; font-size:11pt; letter-spacing:1px; border-bottom:2px solid #000; padding-bottom:5px; margin-bottom:6px; }',
         '.s-section { font-weight:bold; font-size:9pt; text-decoration:underline; margin:4px 0 3px; letter-spacing:1px; }',
         '.s-row     { font-size:8pt; margin:2px 0; display:flex; gap:4px; }',
+        '.s-city    { font-size:10pt; font-weight:bold; }',
         '.s-lbl     { font-weight:bold; white-space:nowrap; }',
         '.s-dash    { border-top:1px dashed #000; margin:5px 0; }',
         '.s-msg     { font-size:8pt; font-style:italic; margin:3px 0; }',
         '.s-product { border:1px solid #000; padding:4px 6px; text-align:center; margin-top:2px; }',
         '.s-pname   { font-weight:bold; font-size:10pt; }',
-        '.s-order   { font-size:7pt; margin-top:2px; letter-spacing:.5px; }',
+        '.s-order   { font-weight:bold; font-size:10pt; margin-top:4px; letter-spacing:.5px; }',
     ].join('\n');
+
+    var totalQty = stickerData.items.reduce(function(sum, i) { return sum + i.qty; }, 0);
 
     var html = '';
     stickerData.items.forEach(function(item) {
         for (var i = 0; i < item.qty; i++) {
-            html += buildSticker(item);
+            html += buildSticker(item, totalQty);
         }
     });
 

@@ -30,6 +30,7 @@ use App\Models\Shipment;
 use App\Models\Slide;
 use App\Models\StockTransfer;
 use App\Models\Transection;
+use App\Models\Setting;
 use App\Models\Warehouse;
 use App\Models\WarehouseInventory;
 use Carbon\Carbon;
@@ -1464,7 +1465,11 @@ class AdminController extends Controller
 
     public function settings()
     {
-        return view('admin.settings', ['admin' => Auth::user()]);
+        return view('admin.settings', [
+            'admin'             => Auth::user(),
+            'shipping_fee'      => Setting::get('shipping_fee', config('cart.shipping', 0)),
+            'courier_companies' => json_decode(Setting::get('courier_companies', '[]'), true) ?: [],
+        ]);
     }
 
     public function settings_profile(Request $request)
@@ -1482,6 +1487,42 @@ class AdminController extends Controller
         $admin->save();
 
         return back()->with('profile_success', 'Profile updated successfully.');
+    }
+
+    public function settings_shipping(Request $request)
+    {
+        $request->validate([
+            'shipping_fee' => ['required', 'numeric', 'min:0', 'max:99999'],
+        ]);
+
+        Setting::set('shipping_fee', $request->shipping_fee);
+
+        return back()->with('shipping_success', 'Shipping fee updated to Rs ' . number_format($request->shipping_fee, 0) . '.');
+    }
+
+    public function settings_courier_add(Request $request)
+    {
+        $request->validate([
+            'courier_name' => ['required', 'string', 'max:50'],
+            'courier_fee'  => ['required', 'numeric', 'min:0', 'max:99999'],
+        ]);
+
+        $couriers   = json_decode(Setting::get('courier_companies', '[]'), true) ?: [];
+        $couriers[] = ['name' => trim($request->courier_name), 'fee' => (int) $request->courier_fee];
+        Setting::set('courier_companies', json_encode($couriers));
+
+        return back()->with('courier_success', 'Courier "' . trim($request->courier_name) . '" added.');
+    }
+
+    public function settings_courier_delete(Request $request)
+    {
+        $request->validate(['index' => ['required', 'integer', 'min:0']]);
+
+        $couriers = json_decode(Setting::get('courier_companies', '[]'), true) ?: [];
+        array_splice($couriers, (int) $request->index, 1);
+        Setting::set('courier_companies', json_encode(array_values($couriers)));
+
+        return back()->with('courier_success', 'Courier removed.');
     }
 
     public function settings_password(Request $request)

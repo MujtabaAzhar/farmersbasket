@@ -18,6 +18,7 @@ use App\Models\PosPayment;
 use App\Models\PosSession;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Setting;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -45,8 +46,10 @@ class PosController extends Controller
         $initialSubtotal  = (float) Cart::instance(self::CART)->subtotal(2, '.', '');
         $initialTax       = (float) Cart::instance(self::CART)->tax(2, '.', '');
         $coupons          = Coupon::where('expiry_date', '>=', Carbon::today())->orderBy('code')->get();
+        $shippingFee      = (float) Setting::get('shipping_fee', config('cart.shipping', 0));
+        $courierCompanies = json_decode(Setting::get('courier_companies', '[]'), true) ?: [];
 
-        return view('pos.index', compact('user', 'branch', 'session', 'categories', 'heldCount', 'initialCart', 'initialCartCount', 'initialSubtotal', 'initialTax', 'coupons'));
+        return view('pos.index', compact('user', 'branch', 'session', 'categories', 'heldCount', 'initialCart', 'initialCartCount', 'initialSubtotal', 'initialTax', 'coupons', 'shippingFee', 'courierCompanies'));
     }
 
     // -------------------------------------------------------------------------
@@ -345,15 +348,17 @@ class PosController extends Controller
             return redirect()->route('pos.index')->with('error', 'Cart is empty.');
         }
 
-        $cartItems = Cart::instance(self::CART)->content();
-        $subtotal  = Cart::instance(self::CART)->subtotal(2, '.', '');
-        $tax       = Cart::instance(self::CART)->tax(2, '.', '');
-        $total     = Cart::instance(self::CART)->total(2, '.', '');
-        $user      = Auth::user();
-        $branch    = $user->branch;
-        $session   = $user->activeSession();
+        $cartItems        = Cart::instance(self::CART)->content();
+        $subtotal         = Cart::instance(self::CART)->subtotal(2, '.', '');
+        $tax              = Cart::instance(self::CART)->tax(2, '.', '');
+        $baseTotal        = Cart::instance(self::CART)->total(2, '.', '');
+        $shippingFee      = (float) Setting::get('shipping_fee', config('cart.shipping', 0));
+        $courierCompanies = json_decode(Setting::get('courier_companies', '[]'), true) ?: [];
+        $user             = Auth::user();
+        $branch           = $user->branch;
+        $session          = $user->activeSession();
 
-        return view('pos.checkout', compact('cartItems', 'subtotal', 'tax', 'total', 'user', 'branch', 'session'));
+        return view('pos.checkout', compact('cartItems', 'subtotal', 'tax', 'baseTotal', 'shippingFee', 'courierCompanies', 'user', 'branch', 'session'));
     }
 
     public function place_order(Request $request)
@@ -377,6 +382,9 @@ class PosController extends Controller
             'delivery_city'    => ['nullable', 'string', 'max:100'],
             'address_id'       => ['nullable', 'exists:customer_addresses,id'],
             'save_customer'    => ['nullable', 'boolean'],
+            // Courier
+            'courier_name' => ['nullable', 'string', 'max:50'],
+            'courier_fee'  => ['nullable', 'numeric', 'min:0'],
             // Gift
             'is_gift'                => ['nullable', 'in:1,0'],
             'gift_sender_name'       => ['required_if:is_gift,1', 'nullable', 'string', 'max:100'],
@@ -445,16 +453,22 @@ class PosController extends Controller
         }
 
         // Compute totals
-        $subtotal = (float) str_replace(',', '', Cart::instance(self::CART)->subtotal(2, '.', ''));
-        $tax      = (float) str_replace(',', '', Cart::instance(self::CART)->tax(2, '.', ''));
-        $discount = (float) ($request->discount_amount ?? 0);
-        $total    = max(0, $subtotal + $tax - $discount);
+        $subtotal    = (float) str_replace(',', '', Cart::instance(self::CART)->subtotal(2, '.', ''));
+        $tax         = (float) str_replace(',', '', Cart::instance(self::CART)->tax(2, '.', ''));
+        $discount    = (float) ($request->discount_amount ?? 0);
+        $isDelivery  = ($request->order_type === 'booking') || ((bool) $request->is_gift);
+        $shippingFee = $isDelivery && $request->filled('courier_fee')
+            ? (float) $request->courier_fee
+            : (float) Setting::get('shipping_fee', config('cart.shipping', 0));
+        $shipping    = $isDelivery ? $shippingFee : 0;
+        $total       = max(0, $subtotal + $tax + $shipping - $discount);
 
         // Build order
         $order = new Order();
         $order->user_id              = $customerId;
         $order->subtotal             = $subtotal;
         $order->tax                  = $tax;
+        $order->shipping             = $shipping;
         $order->discount             = $discount;
         $order->total                = $total;
         $order->source               = 'pos';
@@ -497,11 +511,12 @@ class PosController extends Controller
             $order->type    = 'pickup';
         }
 
-        $order->locality = $branch?->address ?? '';
-        $order->landmark = '';
-        $order->zip      = '';
-        $order->state    = '';
-        $order->country  = 'Pakistan';
+        $order->locality      = $branch?->address ?? '';
+        $order->landmark      = '';
+        $order->zip           = '';
+        $order->state         = '';
+        $order->country       = 'Pakistan';
+        $order->courier_name  = $isDelivery && $request->filled('courier_name') ? $request->courier_name : null;
 
         $order->save();
 

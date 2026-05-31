@@ -98,7 +98,8 @@
             flex: 1; padding: 5px 4px; border: 2px solid #ddd; border-radius: 8px;
             background: #f5f5f5; font-size: 12px; font-weight: 600; cursor: pointer;
         }
-        .ot-btn.active { border-color: #2ecc71; background: #f0fdf4; color: #1a6b3a; }
+        .ot-btn.active   { border-color: #2ecc71; background: #f0fdf4; color: #1a6b3a; }
+        .ot-btn.gift-on  { border-color: #9b59b6; background: #f9f0ff; color: #6c3483; }
         .cust-section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #888; margin: 4px 0 3px; }
         .addr-item {
             display: flex; align-items: center; gap: 5px; padding: 5px 8px;
@@ -216,10 +217,72 @@
         @media print {
             .pos-topbar, .pos-left, .pos-actions, .pos-cart-summary, .pos-customer, .gift-toggle-bar { display: none !important; }
         }
+
+        /* ── POS Loading Overlay ──────────────────────────────── */
+        #pos-loader {
+            position: fixed; inset: 0; z-index: 99999;
+            background: rgba(15, 20, 35, 0.72);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity .22s ease;
+        }
+        #pos-loader.show { opacity: 1; pointer-events: all; }
+
+        .pos-loader-card {
+            background: #fff; border-radius: 18px;
+            padding: 36px 44px 32px; text-align: center;
+            box-shadow: 0 24px 64px rgba(0,0,0,.35);
+            min-width: 230px; max-width: 90vw;
+            transform: translateY(0);
+        }
+
+        .pos-loader-ring {
+            width: 56px; height: 56px; margin: 0 auto 18px; position: relative;
+        }
+        .pos-loader-ring svg {
+            width: 56px; height: 56px;
+            animation: pos-spin .85s linear infinite;
+        }
+        @keyframes pos-spin { to { transform: rotate(360deg); } }
+
+        .pos-loader-title {
+            font-size: 15px; font-weight: 700; color: #1a1f2e; margin-bottom: 6px; letter-spacing: .2px;
+        }
+        .pos-loader-sub {
+            font-size: 12px; color: #888; min-height: 16px;
+        }
+        .pos-loader-dots::after {
+            content: '';
+            animation: pos-dots 1.4s steps(4, end) infinite;
+        }
+        @keyframes pos-dots {
+            0%   { content: ''; }
+            25%  { content: '.'; }
+            50%  { content: '..'; }
+            75%  { content: '...'; }
+            100% { content: ''; }
+        }
     </style>
     @stack('styles')
 </head>
 <body>
+
+{{-- ── Global POS Loading Overlay ── --}}
+<div id="pos-loader">
+    <div class="pos-loader-card">
+        <div class="pos-loader-ring">
+            <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="28" cy="28" r="23" stroke="#e8f5e9" stroke-width="5"/>
+                <path d="M28 5 A23 23 0 0 1 51 28" stroke="#2ecc71" stroke-width="5" stroke-linecap="round"/>
+            </svg>
+        </div>
+        <div class="pos-loader-title" id="pos-loader-title">Please wait</div>
+        <div class="pos-loader-sub pos-loader-dots" id="pos-loader-sub"></div>
+    </div>
+</div>
+
 <div class="pos-wrapper">
     {{-- Top Bar --}}
     <div class="pos-topbar">
@@ -264,6 +327,46 @@
 
     // CSRF header for all AJAX
     $.ajaxSetup({ headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') } });
+</script>
+
+<script>
+// ─── POS Loader ───────────────────────────────────────────────────────────────
+var PosLoader = (function () {
+    var el, titleEl, subEl, _timer;
+
+    function init() {
+        el      = document.getElementById('pos-loader');
+        titleEl = document.getElementById('pos-loader-title');
+        subEl   = document.getElementById('pos-loader-sub');
+    }
+
+    function show(title, sub) {
+        clearTimeout(_timer);
+        if (titleEl) titleEl.textContent = title || 'Please wait';
+        if (subEl)   subEl.textContent   = sub   || '';
+        if (el)      el.classList.add('show');
+    }
+
+    function hide(delay) {
+        _timer = setTimeout(function () {
+            if (el) el.classList.remove('show');
+        }, delay || 0);
+    }
+
+    // Show on any page navigation (covers CHECKOUT → redirect, logout, etc.)
+    window.addEventListener('beforeunload', function () {
+        show('Loading', '');
+    });
+
+    // Hide if browser restores the page from back/forward cache (bfcache)
+    window.addEventListener('pageshow', function (e) {
+        if (e.persisted) { hide(0); }
+    });
+
+    document.addEventListener('DOMContentLoaded', init);
+
+    return { show: show, hide: hide };
+}());
 </script>
 @stack('scripts')
 </body>

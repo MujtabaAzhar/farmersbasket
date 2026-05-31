@@ -14,6 +14,7 @@ class Transection extends Model
         'order_id',
         'mode',
         'status',
+        'payment_receipt',
     ];
 
     public function order()

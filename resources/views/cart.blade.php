@@ -73,8 +73,10 @@
                                                     class="border rounded-2">
                                                 <div>
                                                     <h5 class="text-black max-w-180 fw-500">{{ $item->model->name }}</h5>
-                                                    @if(!empty($item->options->variant_label))
-                                                        <small class="text-muted">{{ $item->options->variant_label }}</small>
+                                                    @if($item->options->get('variant_label'))
+                                                        <span class="badge bg-light text-dark border mt-1 d-inline-block" style="font-size:12px;">
+                                                            Size: {{ $item->options->get('variant_label') }}
+                                                        </span>
                                                     @endif
                                                 </div>
                                             </a>
@@ -174,10 +176,7 @@
                                     <span class="fs-16 text-color">Subtotal</span>
                                     <span class="fs-16 text-black fw-medium">Rs {{ Session::get('discounts')['subtotal'] }}</span>
                                 </div>
-                                 <div class="d-flex align-items-center justify-content-between">
-                                    <span class="fs-16 text-color">Shipping</span>
-                                    <span class="fs-16 text-black fw-medium">Rs {{ Session::get('discounts')['shipping'] }}</span>
-                                </div>
+                            
                                 <div class="d-flex align-items-center justify-content-between">
                                     <span class="fs-16 text-color">VAT</span>
                                     <span class="fs-16 text-black fw-medium">Rs {{ Session::get('discounts')['tax'] }}</span>
@@ -192,11 +191,7 @@
                                     <span class="fs-16 text-black fw-medium">Rs {{ Cart::instance('cart')->subtotal() }}</span>
                                 </div>
                              
-                                 <div class="d-flex align-items-center justify-content-between">
-                                    <span class="fs-16 text-color">Shipping</span>
-                                    
-                                    <span class="fs-16 text-black fw-medium">Rs  {{$shipping_fee}}</span>
-                                </div>
+                            
                                 <div class="d-flex align-items-center justify-content-between">
                                     <span class="fs-16 text-color">VAT</span>
                                     <span class="fs-16 text-black fw-medium">Rs {{ Cart::instance('cart')->tax() }}</span>

@@ -123,6 +123,126 @@
                 </div>
             </div>
 
+            {{-- ── Shipping Fee ────────────────────────────────────── --}}
+            <div class="col-lg-6">
+                <div class="wg-box">
+                    <h5 class="mb-1" style="font-size:15px;font-weight:700;">
+                        <i class="icon-truck me-2" style="color:#2ecc71;"></i> Shipping Fee
+                    </h5>
+                    <p class="text-muted fs-13 mb-4">Set the flat-rate shipping fee charged on every e-commerce order.</p>
+
+                    @if(session('shipping_success'))
+                        <div class="alert alert-success py-2 fs-13 d-flex align-items-center gap-2">
+                            <i class="icon-check-circle"></i> {{ session('shipping_success') }}
+                        </div>
+                    @endif
+
+                    <form action="{{ route('admin.settings.shipping') }}" method="POST">
+                        @csrf
+
+                        <div class="mb-4">
+                            <label class="body-title mb-1">Shipping Amount (Rs) <span class="tf-color-1">*</span></label>
+                            <div style="position:relative;">
+                                <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#888;font-weight:600;font-size:14px;pointer-events:none;">Rs</span>
+                                <input type="number" name="shipping_fee" min="0" max="99999" step="1"
+                                       style="padding-left:40px;"
+                                       class="flex-grow @error('shipping_fee') is-invalid @enderror"
+                                       value="{{ old('shipping_fee', $shipping_fee) }}" required>
+                            </div>
+                            @error('shipping_fee')
+                                <div class="text-danger fs-12 mt-1">{{ $message }}</div>
+                            @enderror
+                            <p class="text-muted fs-12 mt-2 mb-0">
+                                Enter <strong>0</strong> to offer free shipping. This applies to all online checkout orders.
+                            </p>
+                        </div>
+
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 16px;">
+                                <span class="text-muted fs-12">Current Fee: </span>
+                                <span class="fw-700" style="color:#16a34a;font-size:15px;">Rs {{ number_format($shipping_fee, 0) }}</span>
+                            </div>
+                            <button type="submit" class="tf-button style-1">Save Shipping Fee</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {{-- ── Courier Companies (POS) ────────────────────────── --}}
+            <div class="col-lg-6">
+                <div class="wg-box">
+                    <h5 class="mb-1" style="font-size:15px;font-weight:700;">
+                        <i class="icon-package me-2" style="color:#e67e22;"></i> POS Courier Companies
+                    </h5>
+                    <p class="text-muted fs-13 mb-4">Add courier services used for POS delivery orders. The cashier selects one at checkout and its fee is charged.</p>
+
+                    @if(session('courier_success'))
+                        <div class="alert alert-success py-2 fs-13 d-flex align-items-center gap-2">
+                            <i class="icon-check-circle"></i> {{ session('courier_success') }}
+                        </div>
+                    @endif
+
+                    {{-- Existing couriers --}}
+                    @if(count($courier_companies))
+                    <div class="mb-4">
+                        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                            <thead>
+                                <tr style="border-bottom:2px solid #eee;">
+                                    <th style="padding:6px 8px;text-align:left;color:#888;font-weight:600;">Courier</th>
+                                    <th style="padding:6px 8px;text-align:right;color:#888;font-weight:600;">Fee (Rs)</th>
+                                    <th style="width:50px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($courier_companies as $idx => $courier)
+                                <tr style="border-bottom:1px solid #f5f5f5;">
+                                    <td style="padding:7px 8px;font-weight:600;">{{ $courier['name'] }}</td>
+                                    <td style="padding:7px 8px;text-align:right;color:#16a34a;font-weight:700;">Rs {{ number_format($courier['fee'], 0) }}</td>
+                                    <td style="padding:7px 8px;text-align:center;">
+                                        <form action="{{ route('admin.settings.courier.delete') }}" method="POST" onsubmit="return confirm('Remove {{ $courier['name'] }}?');">
+                                            @csrf
+                                            <input type="hidden" name="index" value="{{ $idx }}">
+                                            <button type="submit" style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:15px;" title="Remove">
+                                                <i class="icon-trash-2"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @else
+                    <p class="text-muted fs-13 mb-4" style="background:#f9f9f9;border-radius:6px;padding:10px 14px;">No couriers added yet.</p>
+                    @endif
+
+                    {{-- Add new courier --}}
+                    <form action="{{ route('admin.settings.courier.add') }}" method="POST">
+                        @csrf
+                        <div class="row g-2 align-items-end">
+                            <div class="col-7">
+                                <label class="body-title mb-1" style="font-size:12px;">Courier Name <span class="tf-color-1">*</span></label>
+                                <input type="text" name="courier_name" class="flex-grow @error('courier_name') is-invalid @enderror"
+                                       placeholder="e.g. TCS, Leopard, DHL"
+                                       value="{{ old('courier_name') }}">
+                                @error('courier_name')<div class="text-danger fs-12 mt-1">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-3">
+                                <label class="body-title mb-1" style="font-size:12px;">Fee (Rs) <span class="tf-color-1">*</span></label>
+                                <input type="number" name="courier_fee" min="0" max="99999" step="1"
+                                       class="flex-grow @error('courier_fee') is-invalid @enderror"
+                                       placeholder="250"
+                                       value="{{ old('courier_fee') }}">
+                                @error('courier_fee')<div class="text-danger fs-12 mt-1">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-2">
+                                <button type="submit" class="tf-button style-1 w-100" style="padding:8px 0;">Add</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             {{-- ── Account Info (read-only) ───────────────────────── --}}
             <div class="col-lg-6">
                 <div class="wg-box">

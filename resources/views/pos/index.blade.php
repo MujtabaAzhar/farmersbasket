@@ -51,7 +51,7 @@
 
                 <div class="ot-toggle">
                     <button class="ot-btn active" id="ot-found-pickup" onclick="setOrderType('pickup')">🏪 Pickup</button>
-                    <button class="ot-btn" id="ot-found-delivery" onclick="setOrderType('booking')">🚚 Delivery</button>
+                    <button class="ot-btn gift-toggle-btn" onclick="toggleGift()">🎁 Gift</button>
                 </div>
 
                 <div id="found-delivery-wrap" style="display:none;">
@@ -87,7 +87,7 @@
 
                 <div class="ot-toggle">
                     <button class="ot-btn active" id="ot-new-pickup" onclick="setOrderType('pickup')">🏪 Pickup</button>
-                    <button class="ot-btn" id="ot-new-booking" onclick="setOrderType('booking')">🚚 Booking</button>
+                    <button class="ot-btn gift-toggle-btn" onclick="toggleGift()">🎁 Gift</button>
                 </div>
 
                 <div id="new-booking-wrap" style="display:none;">
@@ -99,12 +99,7 @@
         </div>
 
         {{-- Gift Toggle --}}
-        <div class="gift-toggle-bar">
-            <label>
-                <input type="checkbox" id="gift-toggle" onchange="toggleGift(this.checked)">
-                🎁 This is a Gift Order
-            </label>
-        </div>
+        {{-- Controlled via .gift-toggle-btn buttons above --}}
 
         {{-- Gift Details Form (hidden by default) --}}
         <div id="gift-panel">
@@ -163,6 +158,23 @@
 
         {{-- Cart Summary --}}
         <div class="pos-cart-summary">
+            {{-- Courier picker: shown when booking or gift is active --}}
+            @if(count($courierCompanies))
+            <div id="courier-picker-row" style="display:none;margin-bottom:8px;">
+                <div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">Courier / Shipping</div>
+                <div style="display:flex;gap:5px;flex-wrap:wrap;" id="pos-courier-btns">
+                    @foreach($courierCompanies as $c)
+                    <button type="button" class="pos-courier-btn"
+                            data-name="{{ $c['name'] }}" data-fee="{{ $c['fee'] }}"
+                            onclick="selectPosCourier(this)"
+                            style="flex:1;min-width:72px;padding:7px 6px;border:2px solid #ddd;border-radius:7px;background:#fff;cursor:pointer;text-align:center;font-size:12px;font-weight:700;color:#444;transition:all .15s;line-height:1.3;">
+                        {{ $c['name'] }}<br>
+                        <span style="font-size:10px;font-weight:400;color:#888;">Rs {{ number_format($c['fee'], 0) }}</span>
+                    </button>
+                    @endforeach
+                </div>
+            </div>
+            @endif
             <div class="coupon-row">
                 <select id="pos-coupon" onchange="applyCoupon()">
                     <option value="">🏷 No Coupon</option>
@@ -183,9 +195,13 @@
             </div>
             <div class="summary-row"><span>Subtotal</span><span id="sum-subtotal">Rs 0.00</span></div>
             <div class="summary-row"><span>Tax</span><span id="sum-tax">Rs 0.00</span></div>
+            <div class="summary-row" id="sum-shipping-row" style="display:none;"><span>Shipping <span id="sum-courier-label" style="font-size:10px;color:#888;font-weight:400;"></span></span><span id="sum-shipping" style="color:#2ecc71;">Rs 0.00</span></div>
             <div class="summary-row" id="sum-discount-row" style="display:none;"><span>Discount</span><span id="sum-discount" style="color:#e74c3c;">-Rs 0.00</span></div>
             <div class="summary-row total"><span>TOTAL</span><span id="sum-total">Rs 0.00</span></div>
         </div>
+
+        {{-- Validation Errors --}}
+        <div id="pos-validation-errors" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:8px 12px;margin:6px 0;font-size:12px;color:#856404;"></div>
 
         {{-- Action Buttons --}}
         <div class="pos-actions">
@@ -265,49 +281,84 @@
 <script>
 // ─── State ───────────────────────────────────────────────────────────────────
 var posState = {
-    customer:          null,
-    customerAddresses: [],
-    orderType:         'pickup',
-    selectedAddressId: null,
-    selectedAddress:   '',
-    selectedCity:      '',
-    cartCount:         {{ $initialCartCount }},
-    subtotal:          {{ $initialSubtotal }},
-    tax:               {{ $initialTax }},
-    couponCode:        '',
-    couponDiscount:    0,
-    discount:          0,
-    total:             0,
+    customer:            null,
+    customerAddresses:   [],
+    orderType:           'pickup',
+    selectedAddressId:   null,
+    selectedAddress:     '',
+    selectedCity:        '',
+    isGift:              false,
+    cartCount:           {{ $initialCartCount }},
+    subtotal:            {{ $initialSubtotal }},
+    tax:                 {{ $initialTax }},
+    shippingFee:         {{ $shippingFee }},
+    courierCompanies:    @json($courierCompanies),
+    selectedCourierName: '',
+    selectedCourierFee:  0,
+    couponCode:          '',
+    couponDiscount:      0,
+    discount:            0,
+    total:               0,
 };
 
 // ─── Checkout Gate ────────────────────────────────────────────────────────────
-function canCheckout(){
-    if(posState.cartCount === 0) return false;
+function getValidationErrors(){
+    var errors = [];
+
+    if(posState.cartCount === 0){
+        errors.push('Cart is empty — add at least one product.');
+        return errors;
+    }
 
     var phone = $('#cust-phone').val().trim();
-    if(phone.length < 7) return false;
+    if(phone.length < 7){ errors.push('Enter a valid customer phone number (03XXXXXXXXX).'); }
 
     var foundVisible = $('#cust-found-panel').is(':visible');
     var newVisible   = $('#cust-new-panel').is(':visible');
-    if(!foundVisible && !newVisible) return false;
+
+    if(!foundVisible && !newVisible && phone.length >= 7){
+        errors.push('Waiting for customer lookup…');
+    }
 
     if(newVisible){
-        if(!$('#cust-new-name').val().trim()) return false;
+        if(!$('#cust-new-name').val().trim()) errors.push('Customer name is required.');
         if(posState.orderType === 'booking'){
-            if(!$('#cust-new-address').val().trim()) return false;
-            if(!$('#cust-new-city').val().trim()) return false;
+            if(!$('#cust-new-address').val().trim()) errors.push('Delivery address is required.');
+            if(!$('#cust-new-city').val().trim())    errors.push('Delivery city is required.');
         }
     }
 
     if(foundVisible && posState.orderType === 'booking'){
-        if(!posState.selectedAddressId) return false;
+        if(!posState.selectedAddressId) errors.push('Select a delivery address.');
     }
 
-    return true;
+    if(posState.isGift){
+        if(!$('#gift-sender-name').val().trim())    errors.push('Gift: Sender name is required.');
+        if(!$('#gift-sender-phone').val().trim())   errors.push('Gift: Sender phone is required.');
+        if(!$('#gift-sender-address').val().trim()) errors.push('Gift: Sender address is required.');
+        if(!$('#gift-sender-city').val().trim())    errors.push('Gift: Sender city is required.');
+        if(!$('#gift-receiver-name').val().trim())  errors.push('Gift: Receiver name is required.');
+        if(!$('#gift-receiver-phone').val().trim()) errors.push('Gift: Receiver phone is required.');
+        if(!$('#gift-address').val().trim())        errors.push('Gift: Delivery address is required.');
+        if(!$('#gift-receiver-city').val().trim())  errors.push('Gift: Receiver city is required.');
+    }
+
+    return errors;
 }
 
 function updateCheckoutBtn(){
-    $('#checkout-btn').prop('disabled', !canCheckout());
+    var errors = getValidationErrors();
+    var ok = errors.length === 0;
+    $('#checkout-btn').prop('disabled', !ok);
+
+    if(ok){
+        $('#pos-validation-errors').hide().html('');
+    } else {
+        var html = '<strong>Cannot checkout:</strong><ul style="margin:4px 0 0;padding-left:16px;">'
+                 + errors.map(function(e){ return '<li>' + e + '</li>'; }).join('')
+                 + '</ul>';
+        $('#pos-validation-errors').html(html).show();
+    }
 }
 
 // ─── Page-load init ───────────────────────────────────────────────────────────
@@ -572,13 +623,28 @@ function applyCoupon(){
 
 // Renders the totals using cached posState values — never reads DOM inputs directly.
 function renderSummary(){
-    var disc  = posState.couponDiscount || 0;
-    var total = Math.max(0, posState.subtotal + posState.tax - disc);
+    var isDelivery = posState.isGift || posState.orderType === 'booking';
+    var shipping;
+    if (isDelivery && posState.courierCompanies.length > 0) {
+        shipping = posState.selectedCourierFee || 0;
+    } else {
+        shipping = isDelivery ? (posState.shippingFee || 0) : 0;
+    }
+    var disc = posState.couponDiscount || 0;
+    var total      = Math.max(0, posState.subtotal + posState.tax + shipping - disc);
     posState.discount = disc;
     posState.total    = total;
 
     $('#sum-subtotal').text('Rs ' + posState.subtotal.toFixed(2));
     $('#sum-tax').text('Rs ' + posState.tax.toFixed(2));
+    if(shipping > 0){
+        $('#sum-shipping').text('Rs ' + shipping.toFixed(2));
+        $('#sum-courier-label').text(posState.selectedCourierName ? '(' + posState.selectedCourierName + ')' : '');
+        $('#sum-shipping-row').show();
+    } else {
+        $('#sum-courier-label').text('');
+        $('#sum-shipping-row').hide();
+    }
     if(disc > 0){
         $('#sum-discount').text('-Rs ' + disc.toFixed(2));
         $('#sum-discount-row').show();
@@ -586,6 +652,39 @@ function renderSummary(){
         $('#sum-discount-row').hide();
     }
     $('#sum-total').text('Rs ' + total.toFixed(2));
+}
+
+// ─── Courier Picker ───────────────────────────────────────────────────────────
+function selectPosCourier(btn){
+    document.querySelectorAll('.pos-courier-btn').forEach(function(b){
+        b.style.borderColor = '#ddd';
+        b.style.background  = '#fff';
+        b.style.color       = '#444';
+    });
+    btn.style.borderColor = '#2ecc71';
+    btn.style.background  = '#f0fdf4';
+    btn.style.color       = '#1a6b3a';
+    posState.selectedCourierName = btn.dataset.name;
+    posState.selectedCourierFee  = parseFloat(btn.dataset.fee) || 0;
+    renderSummary();
+}
+
+function updateCourierPanel(){
+    var isDelivery = posState.isGift || posState.orderType === 'booking';
+    var picker = document.getElementById('courier-picker-row');
+    if (!picker) return;
+    if (isDelivery && posState.courierCompanies.length > 0) {
+        $(picker).slideDown(150);
+        // Auto-select first courier if none selected yet
+        if (!posState.selectedCourierName) {
+            var firstBtn = document.querySelector('.pos-courier-btn');
+            if (firstBtn) selectPosCourier(firstBtn);
+        }
+    } else {
+        $(picker).slideUp(150);
+        posState.selectedCourierName = '';
+        posState.selectedCourierFee  = 0;
+    }
 }
 
 // ─── Customer Lookup ─────────────────────────────────────────────────────────
@@ -601,6 +700,10 @@ $('#cust-phone').on('input', function(){
 });
 
 $('#cust-new-name, #cust-new-address, #cust-new-city').on('input', function(){
+    updateCheckoutBtn();
+});
+
+$('#gift-sender-name, #gift-sender-phone, #gift-sender-address, #gift-sender-city, #gift-receiver-name, #gift-receiver-phone, #gift-address, #gift-receiver-city').on('input', function(){
     updateCheckoutBtn();
 });
 
@@ -665,6 +768,11 @@ function setOrderType(type){
     posState.selectedAddress   = '';
     posState.selectedCity      = '';
 
+    // Deactivate gift whenever an order type is explicitly chosen
+    posState.isGift = false;
+    $('.gift-toggle-btn').removeClass('gift-on');
+    $('#gift-panel').slideUp(200);
+
     // Found panel buttons
     $('#ot-found-pickup').toggleClass('active', type === 'pickup');
     $('#ot-found-delivery').toggleClass('active', type === 'booking');
@@ -672,9 +780,10 @@ function setOrderType(type){
 
     // New panel buttons
     $('#ot-new-pickup').toggleClass('active', type === 'pickup');
-    $('#ot-new-booking').toggleClass('active', type === 'booking');
     $('#new-booking-wrap').toggle(type === 'booking');
 
+    updateCourierPanel();
+    renderSummary();
     updateCheckoutBtn();
 }
 
@@ -778,13 +887,18 @@ function saveAddress(){
 }
 
 // ─── Gift Toggle ─────────────────────────────────────────────────────────────
-function toggleGift(on){
-    if(on){
-        $('#gift-panel').slideDown(200);
-        prefillSenderFromCustomer();
-    } else {
-        $('#gift-panel').slideUp(200);
-    }
+function toggleGift(){
+    posState.isGift = true;
+
+    // Deactivate pickup/booking buttons — Gift is mutually exclusive
+    $('#ot-found-pickup, #ot-new-pickup').removeClass('active');
+
+    $('.gift-toggle-btn').addClass('gift-on');
+    $('#gift-panel').slideDown(200);
+    prefillSenderFromCustomer();
+    updateCourierPanel();
+    renderSummary();
+    updateCheckoutBtn();
 }
 
 function prefillSenderFromCustomer(){
@@ -840,16 +954,19 @@ function lookupReceiverPhone(phone){
         } else {
             $('#gift-receiver-status').text('New receiver').css('color','#aaa').show();
         }
+        updateCheckoutBtn();
     });
 }
 
 // ─── Hold Order ───────────────────────────────────────────────────────────────
 function holdOrder(){
     if(posState.cartCount === 0){ alert('Cart is empty.'); return; }
+    PosLoader.show('Holding Order', 'Parking this order');
     var customer = getCustomerData();
     var gift     = getGiftData();
     var note     = $('#pos-order-note').val();
     $.post('{{ route('pos.hold') }}', {customer: customer, gift: gift, note: note}, function(res){
+        PosLoader.hide(0);
         if(res.success){
             alert('Order parked. You can resume it from the Held Orders page.');
             $('#pos-cart-items').html(res.cart);
@@ -862,14 +979,18 @@ function holdOrder(){
             clearCustomer();
             updateSummaryFromServer();
         } else {
+            PosLoader.hide(0);
             alert(res.message);
         }
+    }).fail(function(){
+        PosLoader.hide(0);
     });
 }
 
 // ─── Checkout ─────────────────────────────────────────────────────────────────
 function goToCheckout(){
     if(posState.cartCount === 0){ alert('Cart is empty.'); return; }
+    PosLoader.show('Preparing Checkout', 'Building your order summary');
 
     var cust = getCustomerData();
     sessionStorage.setItem('pos_customer_id',       cust.id || '');
@@ -883,6 +1004,8 @@ function goToCheckout(){
     sessionStorage.setItem('pos_coupon_code',       posState.couponCode || '');
     sessionStorage.setItem('pos_discount',          String(posState.couponDiscount || 0));
     sessionStorage.setItem('pos_order_note',        $('#pos-order-note').val());
+    sessionStorage.setItem('pos_courier_name',      posState.selectedCourierName || '');
+    sessionStorage.setItem('pos_courier_fee',       String(posState.selectedCourierFee || 0));
 
     var gift = getGiftData();
     if(gift){
@@ -935,7 +1058,7 @@ function getCustomerData(){
 }
 
 function getGiftData(){
-    if(!$('#gift-toggle').is(':checked')) return null;
+    if(!posState.isGift) return null;
     return {
         is_gift:          1,
         sender_name:      $('#gift-sender-name').val(),
@@ -952,8 +1075,12 @@ function getGiftData(){
 }
 
 function resetGiftForm(){
-    $('#gift-toggle').prop('checked', false);
+    posState.isGift = false;
+    $('.gift-toggle-btn').removeClass('gift-on');
+    // Restore pickup as the active selection
+    $('#ot-found-pickup, #ot-new-pickup').addClass('active');
     $('#gift-panel').hide();
+    updateCourierPanel();
     $('#gift-sender-name, #gift-sender-phone, #gift-sender-address, #gift-sender-city').val('');
     $('#gift-receiver-name, #gift-receiver-phone, #gift-address, #gift-receiver-city, #gift-message').val('');
     $('#gift-receiver-status').hide().text('');
@@ -968,7 +1095,8 @@ function clearPosSession(){
      'pos_is_gift','pos_gift_sender_name','pos_gift_sender_phone',
      'pos_gift_sender_address','pos_gift_sender_city','pos_gift_receiver_name',
      'pos_gift_receiver_phone','pos_gift_receiver_address','pos_gift_receiver_city',
-     'pos_gift_message','pos_delivery_date','pos_gift_wrapping'
+     'pos_gift_message','pos_delivery_date','pos_gift_wrapping',
+     'pos_courier_name','pos_courier_fee'
     ].forEach(function(k){ sessionStorage.removeItem(k); });
 }
 
@@ -1032,7 +1160,8 @@ function restoreFromSession(){
     if(orderNote) $('#pos-order-note').val(orderNote);
 
     if(isGift){
-        $('#gift-toggle').prop('checked', true);
+        posState.isGift = true;
+        $('.gift-toggle-btn').addClass('gift-on');
         $('#gift-panel').show();
         $('#gift-sender-name').val(sessionStorage.getItem('pos_gift_sender_name') || '');
         $('#gift-sender-phone').val(sessionStorage.getItem('pos_gift_sender_phone') || '');
