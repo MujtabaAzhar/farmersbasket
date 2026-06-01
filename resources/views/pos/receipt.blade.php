@@ -105,7 +105,12 @@
 
             @if($order->posPayment)
             <div class="receipt-payment">
-                <div class="pm-label">{{ strtoupper(str_replace('_', ' ', $order->posPayment->method)) }}</div>
+                <div class="pm-label">
+                    {{ strtoupper(str_replace('_', ' ', $order->posPayment->method)) }}
+                    @if($order->posPayment->online_platform)
+                        ({{ ucfirst($order->posPayment->online_platform) }})
+                    @endif
+                </div>
                 @if($order->posPayment->method === 'cash' && $order->posPayment->cash_received)
                     <div>Cash Received: Rs {{ number_format($order->posPayment->cash_received, 2) }}</div>
                     <div>Change: Rs {{ number_format($order->posPayment->change_given ?? 0, 2) }}</div>
@@ -214,7 +219,12 @@
         {{-- Payment --}}
         @if($order->posPayment)
         <div class="payment-box sm">
-            <div class="bold">{{ strtoupper(str_replace('_', ' ', $order->posPayment->method)) }}</div>
+            <div class="bold">
+                {{ strtoupper(str_replace('_', ' ', $order->posPayment->method)) }}
+                @if($order->posPayment->online_platform)
+                    ({{ ucfirst($order->posPayment->online_platform) }})
+                @endif
+            </div>
             @if($order->posPayment->method === 'cash' && $order->posPayment->cash_received)
                 <div class="row">
                     <span class="lbl">Cash Received</span>
@@ -226,8 +236,6 @@
                 </div>
             @elseif($order->posPayment->reference_no)
                 <div>Ref: {{ $order->posPayment->reference_no }}</div>
-            @elseif($order->posPayment->online_platform)
-                <div>Via: {{ $order->posPayment->online_platform }}</div>
             @endif
         </div>
         @endif
@@ -298,6 +306,9 @@ var stickerData = @json($stickerPayload);
         'paymentMethod' => $order->posPayment
                             ? strtoupper(str_replace('_', ' ', $order->posPayment->method))
                             : 'N/A',
+        'paymentDetail' => $order->posPayment?->online_platform
+                            ? ucfirst($order->posPayment->online_platform)
+                            : null,
         'cashReceived'  => $order->posPayment?->cash_received ?? null,
         'changeGiven'   => $order->posPayment?->change_given  ?? null,
         'to' => $gift
@@ -445,7 +456,7 @@ function printScreenReceipt() {
             +   '<img src="' + escH(d.logoUrl) + '" class="r-logo" alt="Logo">'
             +   '<div class="r-hdr-meta">'
             +     '<div class="r-meta-line">Date: ' + escH(d.createdAt) + ' &nbsp;|&nbsp; USER: ' + escH(d.cashier) + ' &nbsp;|&nbsp; <strong>' + escH(copyLabel) + '</strong></div>'
-            +     '<div class="r-meta-line">Payment Method : <strong>' + escH(d.paymentMethod) + '</strong></div>'
+            +     '<div class="r-meta-line">Payment Method : <strong>' + escH(d.paymentMethod) + (d.paymentDetail ? ' (' + escH(d.paymentDetail) + ')' : '') + '</strong></div>'
             +   '</div>'
             + '</div>'
             + '<div class="r-hdr-right">'

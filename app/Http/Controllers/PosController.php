@@ -370,9 +370,10 @@ class PosController extends Controller
     public function place_order(Request $request)
     {
         $request->validate([
-            'payment_method'    => ['required', 'in:cash,online_transfer'],
+            'payment_method'    => ['required', 'in:cash,online_transfer,credit'],
             'cash_received'     => ['required_if:payment_method,cash', 'nullable', 'numeric', 'min:0'],
             'online_platform'   => ['required_if:payment_method,online_transfer', 'nullable', 'string', 'max:50'],
+            'credit_type'       => ['required_if:payment_method,credit', 'nullable', 'in:advance,pending'],
             'reference_no'      => ['nullable', 'string', 'max:100'],
             'payment_verified'  => ['nullable', 'boolean'],
             'notes'             => ['nullable', 'string', 'max:255'],
@@ -487,7 +488,8 @@ class PosController extends Controller
         $order->delivery_time_slot   = $request->delivery_time_slot;
         $order->status               = 'ordered';
         $isVerified = $request->payment_method === 'cash'
-            || ($request->payment_method === 'online_transfer' && $request->boolean('payment_verified'));
+            || ($request->payment_method === 'online_transfer' && $request->boolean('payment_verified'))
+            || ($request->payment_method === 'credit' && $request->credit_type === 'advance');
         $order->payment_status = $isVerified ? 'paid' : 'pending';
 
         // Delivery address
@@ -613,7 +615,9 @@ class PosController extends Controller
             'cash_received'    => $cashReceived,
             'change_given'     => $cashReceived ? max(0, $cashReceived - $total) : null,
             'reference_no'     => $request->reference_no,
-            'online_platform'  => $request->online_platform,
+            'online_platform'  => $request->payment_method === 'credit'
+                                    ? $request->credit_type
+                                    : $request->online_platform,
             'payment_verified' => $request->payment_method === 'online_transfer'
                                     ? $request->boolean('payment_verified')
                                     : null,

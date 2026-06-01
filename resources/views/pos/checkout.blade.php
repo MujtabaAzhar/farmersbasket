@@ -241,10 +241,13 @@
 
                 <div class="pay-method-group">
                     <button type="button" class="pay-method-btn selected" onclick="selectPayment('cash')" id="pm-cash">
-                        <i >RS</i> Cash
+                        <i>RS</i> Cash
                     </button>
                     <button type="button" class="pay-method-btn" onclick="selectPayment('online_transfer')" id="pm-online_transfer">
                         <i class="icon-smartphone"></i> Online Transfer
+                    </button>
+                    <button type="button" class="pay-method-btn" onclick="selectPayment('credit')" id="pm-credit">
+                        <i class="icon-credit-card"></i> Credit
                     </button>
                 </div>
                 <input type="hidden" name="payment_method" id="payment_method" value="cash">
@@ -295,6 +298,17 @@
                         <label>Cashier Note <span style="color:#888;font-weight:400;">(optional)</span></label>
                         <textarea name="notes" id="cashier-note" rows="2"
                                   placeholder="e.g. Customer showed screenshot, will verify later…"></textarea>
+                    </div>
+                </div>
+
+                {{-- Credit fields --}}
+                <div id="credit-fields" style="display:none;">
+                    <div class="form-group">
+                        <label>Credit Type</label>
+                        <select name="credit_type" id="credit-type">
+                            <option value="pending" selected>Pending</option>
+                            <option value="advance">Advance</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -503,6 +517,7 @@ function selectPayment(method) {
     $('#pm-' + method).addClass('selected');
     $('#cash-fields').toggle(method === 'cash');
     $('#online-fields').toggle(method === 'online_transfer');
+    $('#credit-fields').toggle(method === 'credit');
     if (method === 'online_transfer') {
         setVerified(1);
     } else {
