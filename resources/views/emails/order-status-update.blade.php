@@ -117,7 +117,7 @@ $bodyMessage = $statusMessages[$order->status] ?? 'Your order status has been up
           </table>
 
           <p style="font-size:13px;color:#888;margin:0;">
-            Questions? Contact us at <a href="tel:+923017147110" style="color:#2ecc71;">+92 301 7147110</a>
+            Questions? Contact us at <a href="tel:+923111222384" style="color:#2ecc71;">03-111-222-384</a>
           </p>
         </td>
       </tr>

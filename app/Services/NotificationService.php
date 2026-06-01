@@ -132,7 +132,7 @@ class NotificationService
 
         $lines[] = "";
         $lines[] = "Thank you for shopping at Farmer's Basket!";
-        $lines[] = "For support: +92 301 7147110";
+        $lines[] = "For support: 03-111-222-384";
 
         return implode("\n", $lines);
     }
@@ -167,20 +167,24 @@ class NotificationService
 
         $lines[] = "";
         $lines[] = "Thank you for shopping at Farmer's Basket!";
-        $lines[] = "For support: +92 301 7147110";
+        $lines[] = "For support: 03-111-222-384";
 
         return implode("\n", $lines);
     }
 
     private static function buildGiftReceiverMessage(Order $order, $gift): string
     {
-        $name   = $gift->receiver_name ?: 'there';
-        $sender = $gift->sender_name   ?: 'Someone';
+        $name      = $gift->receiver_name ?: 'there';
+        $sender    = $gift->sender_name   ?: 'Someone';
+        $totalBoxes = $order->orderItems->sum('quantity');
         $lines  = [
             "Assalam-o-Alaikum {$name}! 🌿",
             "",
             "🎁 *You Have a Gift Coming!*",
             "*{$sender}* has sent you a gift from Farmer's Basket.",
+            "",
+            "📋 Invoice No: {$order->order_number}",
+            "📦 Total Boxes: {$totalBoxes}",
             "",
         ];
 
@@ -195,7 +199,7 @@ class NotificationService
         }
 
         $lines[] = "";
-        $lines[] = "Farmer's Basket — +92 301 7147110";
+        $lines[] = "Farmer's Basket — 03-111-222-384";
 
         return implode("\n", $lines);
     }
@@ -236,7 +240,7 @@ class NotificationService
         }
 
         $lines[] = "";
-        $lines[] = "Farmer's Basket — +92 301 7147110";
+        $lines[] = "Farmer's Basket — 03-111-222-384";
 
         return implode("\n", $lines);
     }

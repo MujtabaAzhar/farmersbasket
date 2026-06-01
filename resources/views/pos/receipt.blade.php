@@ -127,12 +127,12 @@
             Fresh produce, delivered with care.<br><br>
             For orders, support, or any queries,<br>
             feel free to contact us at:<br>
-            📞 +92 301 7147110
+            📞 03-111-222-384
         </div>
 
         <div class="action-bar">
             <button class="btn-print"    onclick="printScreenReceipt()">🖨 Print Receipt</button>
-            <button class="btn-thermal"  onclick="printThermal()">🧾 Print Thermal</button>
+            {{-- <button class="btn-thermal"  onclick="printThermal()">🧾 Print Thermal</button>  --}}
             <button class="btn-sticker"  onclick="printStickers()">📦 Print Stickers</button>
             <button class="btn-new-sale" onclick="window.location='{{ route('pos.index') }}'">New Sale</button>
         </div>
@@ -244,7 +244,7 @@
             <div class="bold">Thank you for shopping!</div>
             <div>Farmer's Basket</div>
             <div>Fresh produce, delivered with care.</div>
-            <div style="margin-top:4px;">+92 301 7147110</div>
+            <div style="margin-top:4px;">03-111-222-384</div>
             <div style="margin-top:6px;font-size:7pt;">{{ $order->order_number }} &bull; {{ $order->created_at->format('d M Y H:i') }}</div>
         </div>
 
@@ -260,20 +260,26 @@
     $gift = $order->giftOrder;
     $stickerPayload = [
         'orderNumber' => $order->order_number,
+        'createdAt'   => $order->created_at->format('n/j/y, g:i A'),
+        'cashier'     => auth()->user()?->name ?? 'Staff',
         'isGift'      => (bool) $gift,
-        'to'          => $gift
+        'to' => $gift
             ? ['name' => $gift->receiver_name, 'phone' => $gift->receiver_phone,
                'address' => $gift->receiver_address, 'city' => $gift->receiver_city]
             : ['name' => $order->name, 'phone' => $order->phone,
                'address' => $order->address, 'city' => $order->city],
-        'from'    => $gift
+        'from' => $gift
             ? ['name' => $gift->sender_name, 'phone' => $gift->sender_phone,
-               'address' => $gift->sender_address, 'city' => $gift->sender_city]
-            : null,
+               'address' => $gift->sender_address ?? '', 'city' => $gift->sender_city ?? '']
+            : ['name'    => ($order->branch?->name ?: "FARMER'S BASKET"),
+               'address' => ($order->branch?->address ?: ''),
+               'phone'   => '03-111-222-384',
+               'city'    => ($order->branch?->city ?: 'Lahore')],
         'message' => $gift?->gift_message ?? '',
         'items'   => $order->orderItems->map(function ($i) {
             return [
                 'name'    => $i->product?->name ?? ('Product #' . $i->product_id),
+                'brand'   => $i->product?->brand?->name ?? '',
                 'variant' => $i->variant_label ?? '',
                 'qty'     => $i->quantity,
             ];
@@ -282,42 +288,91 @@
 @endphp
 var stickerData = @json($stickerPayload);
 
+// ── Receipt data (PHP → JS) ──────────────────────────────────────────────────
+@php
+    $receiptPayload = [
+        'orderNumber'   => $order->order_number,
+        'createdAt'     => $order->created_at->format('d/m/Y H:i'),
+        'cashier'       => auth()->user()?->name ?? 'Staff',
+        'branch'        => $order->branch?->name ?: "FARMER'S BASKET",
+        'paymentMethod' => $order->posPayment
+                            ? strtoupper(str_replace('_', ' ', $order->posPayment->method))
+                            : 'N/A',
+        'cashReceived'  => $order->posPayment?->cash_received ?? null,
+        'changeGiven'   => $order->posPayment?->change_given  ?? null,
+        'to' => $gift
+            ? ['name' => $gift->receiver_name, 'phone' => $gift->receiver_phone,
+               'address' => $gift->receiver_address ?? '', 'city' => $gift->receiver_city ?? '']
+            : ['name' => $order->name ?? '', 'phone' => $order->phone ?? '',
+               'address' => $order->address ?? '', 'city' => $order->city ?? ''],
+        'from' => [
+            'name'  => $order->branch?->name ?: "FARMER'S BASKET",
+            'phone' => '03-111-222-384',
+            'city'  => $order->branch?->city  ?: 'Lahore',
+        ],
+        'items'    => $order->orderItems->map(function ($i) {
+            return [
+                'name'    => $i->product?->name ?? ('Product #' . $i->product_id),
+                'brand'   => $i->product?->brand?->name ?? '',
+                'variant' => $i->variant_label ?? '',
+                'qty'     => $i->quantity,
+                'price'   => $i->price,
+                'total'   => $i->price * $i->quantity,
+            ];
+        })->values()->all(),
+        'totalQty'    => $order->orderItems->sum('quantity'),
+        'subtotal'    => $order->subtotal,
+        'tax'         => $order->tax      ?? 0,
+        'shipping'    => $order->shipping ?? 0,
+        'discount'    => $order->discount ?? 0,
+        'total'       => $order->total,
+        'courierName' => $order->courier_name ?? '',
+        'orderNote'   => $order->order_note  ?? '',
+        'logoUrl'     => asset('images/logo/logo.png'),
+    ];
+@endphp
+var receiptData = @json($receiptPayload);
+
 // ── Sticker printer ───────────────────────────────────────────────────────────
 function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-function buildSticker(item, totalQty) {
+function buildSticker(item, stickerIdx, totalStickers) {
     var d = stickerData;
     var s = '<div class="sticker">';
 
-    // Brand header
-    s += '<div class="s-brand">FARMER\'S BASKET</div>';
+    // Large invoice number (centered) with total-quantity suffix
+    s += '<div class="s-inv-lg">Invoice No: ' + escH(d.orderNumber) + ' / ' + totalStickers + '</div>';
 
-    // TO
-    s += '<div class="s-section">TO</div>';
-    s += '<div class="s-row"><span class="s-lbl">Name   :</span> <span>' + escH(d.to.name)    + '</span></div>';
-    s += '<div class="s-row"><span class="s-lbl">Phone  :</span> <span>' + escH(d.to.phone)   + '</span></div>';
-    if (d.to.address) s += '<div class="s-row"><span class="s-lbl">Address:</span> <span>' + escH(d.to.address) + '</span></div>';
-    if (d.to.city)    s += '<div class="s-row s-city"><span class="s-lbl">City   :</span> <span>' + escH(d.to.city) + '</span></div>';
+    // Cashier / user line with brand on the right
+    s += '<div class="s-user-row">'
+       + '<span>USER: ' + escH(d.cashier) + '</span>'
+       + (item.brand ? '<span>Brand: <strong>' + escH(item.brand) + '</strong></span>' : '')
+       + '</div>';
 
-    // FROM (gift only)
-    if (d.isGift && d.from) {
-        s += '<div class="s-dash"></div>';
-        s += '<div class="s-section">FROM</div>';
-        s += '<div class="s-row"><span class="s-lbl">Name   :</span> <span>' + escH(d.from.name)  + '</span></div>';
-        s += '<div class="s-row"><span class="s-lbl">Phone  :</span> <span>' + escH(d.from.phone) + '</span></div>';
-        if (d.from.city)    s += '<div class="s-row"><span class="s-lbl">City   :</span> <span>' + escH(d.from.city)    + '</span></div>';
-        if (d.message) {
-            s += '<div class="s-dash"></div>';
-            s += '<div class="s-msg">&#128140; &ldquo;' + escH(d.message) + '&rdquo;</div>';
-        }
-    }
+    // Single combined box for TO and FROM
+    var addrClass = (d.to.address && d.to.address.length > 45) ? 's-detail-sm' : 's-detail';
+    s += '<div class="s-combined-box">';
 
-    // Product box
-    s += '<div class="s-dash"></div>';
-    s += '<div class="s-product">';
-    s += '<div class="s-pname">' + escH(item.name) + (item.variant ? ' &ndash; ' + escH(item.variant) : '') + ' - ' + totalQty + '</div>';
-    s += '<div class="s-order">Order# ' + escH(d.orderNumber) + '</div>';
-    s += '</div>';
+    // TO section inside combined box
+    s += '<div class="s-box-title">TO</div>';
+    s += '<div class="s-to-name">' + escH(d.to.name) + '</div>';
+    if (d.to.address) s += '<div class="' + addrClass + '">Delivery Address: ' + escH(d.to.address) + '</div>';
+    s += '<div class="s-detail">Contact: ' + escH(d.to.phone) + '</div>';
+    if (d.to.city) s += '<div class="s-city-bar">City: ' + escH(d.to.city).toUpperCase() + '</div>';
+
+    // Divider between TO and FROM
+    s += '<div class="s-inner-divider"></div>';
+
+    // FROM section inside combined box
+    s += '<div class="s-box-title">FROM</div>';
+    s += '<div class="s-from-name">' + escH(d.from.name) + '</div>';
+    s += '<div class="s-detail">Contact: ' + escH(d.from.phone) + '</div>';
+    if (d.from.city) s += '<div class="s-city-bar">City: ' + escH(d.from.city) + '</div>';
+
+    s += '</div>'; // .s-combined-box
+
+    // Helpline only — no footer row
+    s += '<div class="s-helpline">In case of any query please contact our customer Helpline 03-111-222-384</div>';
 
     s += '</div>'; // .sticker
     return s;
@@ -326,34 +381,42 @@ function buildSticker(item, totalQty) {
 function printStickers() {
     var css = [
         '* { margin:0; padding:0; box-sizing:border-box; }',
-        'body { font-family:"Courier New",Courier,monospace; font-size:9pt; color:#000; background:#fff; width:72mm; }',
-        '@page { size:80mm auto; margin:4mm 4mm; }',
-        '.sticker { border:2px solid #000; padding:7px 8px; margin-bottom:4px; page-break-after:always; }',
-        '.sticker:last-child { page-break-after:auto; }',
-        '.s-brand   { text-align:center; font-weight:bold; font-size:11pt; letter-spacing:1px; border-bottom:2px solid #000; padding-bottom:5px; margin-bottom:6px; }',
-        '.s-section { font-weight:bold; font-size:9pt; text-decoration:underline; margin:4px 0 3px; letter-spacing:1px; }',
-        '.s-row     { font-size:8pt; margin:2px 0; display:flex; gap:4px; }',
-        '.s-city    { font-size:10pt; font-weight:bold; }',
-        '.s-lbl     { font-weight:bold; white-space:nowrap; }',
-        '.s-dash    { border-top:1px dashed #000; margin:5px 0; }',
-        '.s-msg     { font-size:8pt; font-style:italic; margin:3px 0; }',
-        '.s-product { border:1px solid #000; padding:4px 6px; text-align:center; margin-top:2px; }',
-        '.s-pname   { font-weight:bold; font-size:10pt; }',
-        '.s-order   { font-weight:bold; font-size:10pt; margin-top:4px; letter-spacing:.5px; }',
+        'body { font-family:Arial,Helvetica,sans-serif; color:#000; background:#fff; }',
+        '@page { size:4in 4in; margin:0; }',
+        '.sticker {',
+        '  width:4in; height:4in;',
+        '  padding:10px 14px 8px;',
+        '  display:flex; flex-direction:column; gap:5px;',
+        '  page-break-after:always; overflow:hidden;',
+        '}',
+        '.sticker:last-child { page-break-after:avoid; }',
+        '.s-inv-lg        { font-size:14pt; font-weight:bold; margin-top:1px; text-align:center; }',
+        '.s-helpline      { font-size:9.5pt; font-weight:bold; color:#000; text-align:center; margin-top:1px; padding-top:4px; }',
+        '.s-user-row      { display:flex; justify-content:space-between; font-size:9.5pt; font-weight:600; letter-spacing:.3px; }',
+        '.s-combined-box  { border:2px solid #000; padding:6px 10px 5px; }',
+        '.s-inner-divider { border-top:1px dashed #000; margin:6px 0; }',
+        '.s-box-title     { text-align:center; font-weight:bold; font-size:13pt; letter-spacing:2px; margin-bottom:3px; }',
+        '.s-to-name       { font-size:13pt; font-weight:bold; line-height:1.15; }',
+        '.s-from-name     { font-size:13pt; font-weight:700; }',
+        '.s-detail        { font-size:13pt; margin:2px 0; }',
+        '.s-detail-sm     { font-size:9pt; margin:2px 0; }',
+        '.s-city-bar      { background:#000; color:#fff; text-align:center; font-weight:bold; font-size:13pt; padding:3px 0; margin-top:5px; letter-spacing:1px; }',
     ].join('\n');
 
-    var totalQty = stickerData.items.reduce(function(sum, i) { return sum + i.qty; }, 0);
+    var totalStickers = stickerData.items.reduce(function(sum, i) { return sum + i.qty; }, 0);
 
     var html = '';
+    var stickerIdx = 0;
     stickerData.items.forEach(function(item) {
         for (var i = 0; i < item.qty; i++) {
-            html += buildSticker(item, totalQty);
+            html += buildSticker(item, stickerIdx, totalStickers);
+            stickerIdx++;
         }
     });
 
     if (!html) { alert('No items to print stickers for.'); return; }
 
-    var win = window.open('', '_blank', 'width=340,height=700,scrollbars=yes,resizable=yes');
+    var win = window.open('', '_blank', 'width=600,height=600,scrollbars=yes,resizable=yes');
     win.document.write(
         '<!DOCTYPE html><html><head><meta charset="utf-8">'
         + '<title>Stickers &mdash; {{ $order->order_number }}</title>'
@@ -365,56 +428,165 @@ function printStickers() {
     setTimeout(function(){ win.print(); }, 400);
 }
 
-// ── Screen Receipt: 2 copies in a dedicated print window ──────────────────────
+// ── Screen Receipt: 2 slips on 1 A4 page, matching reference layout ──────────
 function printScreenReceipt() {
-    var content = document.querySelector('.receipt-wrapper').innerHTML;
+    var d = receiptData;
 
-    var makeCopy = function(label) {
-        return '<div class="copy-label">' + label + '</div>'
-             + '<div class="receipt-wrapper">' + content + '</div>';
-    };
+    function fmt(n) {
+        return 'Rs ' + parseFloat(n || 0).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function buildSlip(copyLabel) {
+        var addrClass = (d.to.address && d.to.address.length > 40) ? 'r-sm' : 'r-det';
+
+        // ── Header row
+        var header = '<div class="r-hdr">'
+            + '<div class="r-hdr-left">'
+            +   '<img src="' + escH(d.logoUrl) + '" class="r-logo" alt="Logo">'
+            +   '<div class="r-hdr-meta">'
+            +     '<div class="r-meta-line">Date: ' + escH(d.createdAt) + ' &nbsp;|&nbsp; USER: ' + escH(d.cashier) + ' &nbsp;|&nbsp; <strong>' + escH(copyLabel) + '</strong></div>'
+            +     '<div class="r-meta-line">Payment Method : <strong>' + escH(d.paymentMethod) + '</strong></div>'
+            +   '</div>'
+            + '</div>'
+            + '<div class="r-hdr-right">'
+            +   '<div class="r-banner">FARMER\'S BASKET</div>'
+            +   '<div class="r-inv-block">Invoice No:<br><strong>' + escH(d.orderNumber) + ' / ' + d.totalQty + '</strong></div>'
+            + '</div>'
+            + '</div>';
+
+        // ── TO / FROM side-by-side
+        var tofrom = '<div class="r-tofrom">'
+            // TO
+            + '<div class="r-to-col">'
+            +   '<div class="r-col-hdr">TO</div>'
+            +   '<div class="r-name">' + escH(d.to.name) + '</div>'
+            +   (d.to.address ? '<div class="' + addrClass + '">Delivery Address: ' + escH(d.to.address) + '</div>' : '')
+            +   '<div class="r-det">Contact: ' + escH(d.to.phone) + '</div>'
+            +   (d.to.city ? '<div class="r-city">City: ' + escH(d.to.city).toUpperCase() + '</div>' : '')
+            + '</div>'
+            // FROM
+            + '<div class="r-from-col">'
+            +   '<div class="r-col-hdr">FROM</div>'
+            +   '<div class="r-name">' + escH(d.from.name) + '</div>'
+            +   '<div class="r-det">Address:</div>'
+            +   '<div class="r-det">Contact: ' + escH(d.from.phone) + '</div>'
+            +   (d.from.city ? '<div class="r-city">City: ' + escH(d.from.city) + '</div>' : '')
+            + '</div>'
+            + '</div>';
+
+        // ── Order details (full width, below TO/FROM)
+        var itemLines = '';
+        d.items.forEach(function(item) {
+            var label = escH(item.name) + (item.variant ? ' (' + escH(item.variant) + ')' : '');
+            var brandTag = item.brand ? ' <span class="r-brand">' + escH(item.brand) + '</span>' : '';
+            itemLines += '<tr>'
+                + '<td class="r-dt-lbl">' + label + brandTag + '</td>'
+                + '<td class="r-dt-mid">' + item.qty + ' &times; ' + fmt(item.price) + '</td>'
+                + '<td class="r-dt-val">' + fmt(item.total) + '</td>'
+                + '</tr>';
+        });
+
+        var deliveryRow = '';
+        if (d.shipping > 0) {
+            var courierLabel = d.courierName
+                ? '<span class="r-courier-banner">' + escH(d.courierName) + '</span>'
+                : '';
+            deliveryRow = '<tr>'
+                + '<td class="r-dt-lbl">Delivery By: ' + courierLabel + '</td>'
+                + '<td class="r-dt-mid"></td>'
+                + '<td class="r-dt-val">' + fmt(d.shipping) + '</td>'
+                + '</tr>';
+        }
+
+        var discRow = d.discount > 0
+            ? '<tr><td class="r-dt-lbl">Disc Amt (%):</td><td class="r-dt-mid"></td><td class="r-dt-val">- ' + fmt(d.discount) + '</td></tr>'
+            : '<tr><td class="r-dt-lbl">Disc Amt (%):</td><td class="r-dt-mid"></td><td class="r-dt-val">' + fmt(0) + '</td></tr>';
+
+        var details = '<div class="r-details">'
+            + '<table class="r-dt-table"><tbody>'
+            +   '<tr><td class="r-dt-branch" colspan="3">' + escH(d.branch) + '</td></tr>'
+            +   '<tr><td class="r-dt-lbl">Total Item(s): ' + d.totalQty + '</td><td class="r-dt-mid"></td><td class="r-dt-val"></td></tr>'
+            +   itemLines
+            +   '<tr class="r-divrow"><td colspan="3"><div class="r-thin-line"></div></td></tr>'
+            +   '<tr><td class="r-dt-lbl">Sub Total:</td><td class="r-dt-mid"></td><td class="r-dt-val">' + fmt(d.subtotal) + '</td></tr>'
+            +   discRow
+            +   deliveryRow
+            +   '<tr class="r-divrow"><td colspan="3"><div class="r-thin-line"></div></td></tr>'
+            +   '<tr><td class="r-dt-grand">Grand Total:</td><td class="r-dt-mid"></td><td class="r-dt-grand r-dt-val">' + fmt(d.total) + '</td></tr>'
+            +   '<tr><td class="r-dt-lbl">Paid Amount:</td><td class="r-dt-mid"></td><td class="r-dt-val">' + fmt(d.total) + '</td></tr>'
+            + '</tbody></table>'
+            + '</div>';
+
+        // ── Footer
+        var footer = '<div class="r-footer">'
+            + 'For Inquiries &amp; suggestions Please Contact: Help line: <strong>03-111-222-384</strong><br>'
+            + 'Thanks For Visiting At Farmer\'s Basket &mdash; For any Query and Complaint Call Us at 03-111-222-384'
+            + '</div>';
+
+        return '<div class="slip">' + header + tofrom + details + footer + '</div>';
+    }
 
     var css = [
         '* { margin:0; padding:0; box-sizing:border-box; }',
-        'body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:#fff; }',
-        '.copy-label { text-align:center; font-weight:800; font-size:13px; letter-spacing:2px; padding:6px 10px; border:2px dashed #000; margin-bottom:10px; }',
-        '.receipt-wrapper { max-width:420px; margin:0 auto; background:#fff; }',
-        '.receipt-header { background:#fff; color:#000; text-align:center; padding:18px 16px; border-bottom:1px solid #000; }',
-        '.receipt-header .brand { font-size:18px; font-weight:800; color:#2ecc71; }',
-        '.receipt-header .sub { font-size:11px; opacity:.7; margin-top:2px; }',
-        '.receipt-body { padding:16px; }',
-        '.receipt-meta { display:flex; justify-content:space-between; font-size:11px; color:#888; margin-bottom:12px; }',
-        '.receipt-divider { border:none; border-top:1px dashed #ccc; margin:10px 0; }',
-        '.receipt-item { display:flex; gap:6px; padding:4px 0; font-size:13px; }',
-        '.receipt-item .r-name { flex:1; }',
-        '.receipt-item .r-qty { color:#888; white-space:nowrap; }',
-        '.receipt-item .r-price { font-weight:600; white-space:nowrap; min-width:70px; text-align:right; }',
-        '.receipt-total-row { display:flex; justify-content:space-between; font-size:12px; padding:2px 0; color:#555; }',
-        '.receipt-total-row.grand { font-size:16px; font-weight:800; color:#1a1f2e; margin-top:6px; }',
-        '.receipt-payment { background:#f0fdf4; border-radius:8px; padding:10px 12px; margin-top:10px; font-size:12px; }',
-        '.receipt-payment .pm-label { font-weight:700; color:#2ecc71; font-size:13px; }',
-        '.receipt-footer { text-align:center; color:#aaa; font-size:11px; padding:12px; background:#fafafa; }',
-        '.gift-badge { background:#fff3cd; border-radius:8px; padding:8px 12px; margin-bottom:10px; font-size:12px; }',
-        '.gift-badge strong { color:#e67e22; }',
-        '.bo { font-weight:800; color:#000; font-size:12px; }',
-        '.action-bar { display:none !important; }',
-        '.page-sep { page-break-after:always; border-top:2px dashed #aaa; text-align:center; font-size:11px; color:#aaa; padding:8px 0; margin:16px 0; letter-spacing:1px; }',
-        '@page { margin:8mm; }',
+        'body { font-family:Arial,Helvetica,sans-serif; font-size:9.5pt; color:#000; background:#fff; width:210mm; }',
+        '@page { size:A4 portrait; margin:0; }',
+
+        // Two slips stacked — each exactly half A4
+        '.slip     { width:210mm; height:148.5mm; padding:4mm 6mm 3mm; display:flex; flex-direction:column; overflow:hidden; }',
+        '.cut-line { width:210mm; height:4mm; display:flex; align-items:center; justify-content:center; font-size:8pt; color:#aaa; letter-spacing:2px; border-top:1px dashed #bbb; border-bottom:1px dashed #bbb; }',
+
+        // ── HEADER
+        '.r-hdr       { display:flex; align-items:stretch; gap:4mm; border-bottom:1.5px solid #000; padding-bottom:2mm; margin-bottom:2mm; }',
+        '.r-hdr-left  { display:flex; align-items:center; gap:3mm; flex:1; }',
+        '.r-logo      { height:34px; width:auto; flex-shrink:0; }',
+        '.r-hdr-meta  { display:flex; flex-direction:column; gap:2px; }',
+        '.r-meta-line { font-size:8.5pt; color:#222; }',
+        '.r-hdr-right { display:flex; flex-direction:column; align-items:flex-end; justify-content:center; min-width:65mm; }',
+        '.r-banner    { background:#000; color:#fff; font-size:12pt; font-weight:bold; letter-spacing:1px; padding:4px 8px; text-align:center; width:100%; }',
+        '.r-inv-block { font-size:9.5pt; text-align:right; margin-top:2px; line-height:1.4; }',
+
+        // ── TO / FROM side by side
+        '.r-tofrom    { display:flex; border:1.5px solid #000; margin-bottom:2mm; }',
+        '.r-to-col    { flex:1; padding:2mm 3mm; border-right:1.5px solid #000; }',
+        '.r-from-col  { flex:1; padding:2mm 3mm; }',
+        '.r-col-hdr   { text-align:center; font-weight:bold; font-size:11pt; letter-spacing:1px; border-bottom:1px solid #000; margin-bottom:1.5mm; padding-bottom:2px; }',
+        '.r-name      { font-size:11pt; font-weight:bold; line-height:1.3; }',
+        '.r-det       { font-size:9pt; margin:2px 0; }',
+        '.r-sm        { font-size:7.5pt; margin:2px 0; }',
+        '.r-city      { background:#000; color:#fff; text-align:center; font-weight:bold; font-size:10pt; padding:3px 0; margin-top:2mm; letter-spacing:1px; }',
+
+        // ── ORDER DETAILS
+        '.r-details       { flex:1; border:1.5px solid #000; padding:1.5mm 2.5mm; margin-bottom:1.5mm; }',
+        '.r-dt-table      { width:100%; border-collapse:collapse; }',
+        '.r-dt-table td   { font-size:9pt; padding:2px 3px; vertical-align:middle; }',
+        '.r-dt-branch     { font-weight:bold; font-size:10pt; padding-bottom:1.5mm !important; }',
+        '.r-dt-lbl        { width:55%; }',
+        '.r-dt-mid        { width:25%; text-align:center; color:#333; }',
+        '.r-dt-val        { width:20%; text-align:right; font-weight:600; }',
+        '.r-dt-grand      { font-weight:bold; font-size:10pt; }',
+        '.r-brand         { font-size:7.5pt; color:#555; font-style:italic; margin-left:3px; }',
+        '.r-thin-line     { border-top:1px solid #000; margin:2px 0; }',
+        '.r-courier-banner{ background:#000; color:#fff; font-weight:bold; padding:1px 6px; font-size:8pt; letter-spacing:.5px; }',
+
+        // ── FOOTER
+        '.r-footer { text-align:center; font-size:8pt; border-top:1px solid #000; padding-top:1.5mm; line-height:1.6; margin-top:auto; }',
     ].join('\n');
 
-    var win = window.open('', '_blank', 'width=540,height=900,scrollbars=yes,resizable=yes');
+    var slip1 = buildSlip('Customer Slip');
+    var cut   = '<div class="cut-line">&#9988; &mdash;&mdash;&mdash;&mdash;&mdash; cut here &mdash;&mdash;&mdash;&mdash;&mdash; &#9988;</div>';
+    var slip2 = buildSlip('Counter Copy');
+
+    var win = window.open('', '_blank', 'width=800,height=900,scrollbars=yes,resizable=yes');
     win.document.write(
         '<!DOCTYPE html><html><head><meta charset="utf-8">'
-        + '<title>Receipt {{ $order->order_number }}</title>'
+        + '<title>Receipt &mdash; {{ $order->order_number }}</title>'
         + '<style>' + css + '</style></head><body>'
-        + makeCopy('&#9994;&nbsp; CUSTOMER COPY &nbsp;&#9994;')
-        + '<div class="page-sep">&#9988;&nbsp;&mdash;&mdash;&mdash; cut here &mdash;&mdash;&mdash;&nbsp;&#9988;</div>'
-        + makeCopy('&#9994;&nbsp; COUNTER COPY &nbsp;&#9994;')
+        + slip1 + cut + slip2
         + '</body></html>'
     );
     win.document.close();
     win.focus();
-    setTimeout(function(){ win.print(); }, 400);
+    setTimeout(function () { win.print(); }, 400);
 }
 
 // ── Thermal Receipt: 2 copies on the same roll ────────────────────────────────
