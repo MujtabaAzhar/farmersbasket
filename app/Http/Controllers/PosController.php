@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AdminNotification;
 use App\Services\NotificationService;
 use App\Models\Branch;
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Coupon;
 use App\Models\CustomerAddress;
@@ -39,6 +40,7 @@ class PosController extends Controller
         $user       = Auth::user();
         $branch     = $user->branch;
         $session    = $user->activeSession();
+        $brands     = Brand::orderBy('name')->get(['id', 'name']);
         $categories = Category::orderBy('name')->get(['id', 'name']);
         $heldCount        = PosHeldOrder::where('cashier_id', $user->id)->count();
         $initialCart      = $this->renderCart();
@@ -49,7 +51,7 @@ class PosController extends Controller
         $shippingFee      = (float) Setting::get('shipping_fee', config('cart.shipping', 0));
         $courierCompanies = json_decode(Setting::get('courier_companies', '[]'), true) ?: [];
 
-        return view('pos.index', compact('user', 'branch', 'session', 'categories', 'heldCount', 'initialCart', 'initialCartCount', 'initialSubtotal', 'initialTax', 'coupons', 'shippingFee', 'courierCompanies'));
+        return view('pos.index', compact('user', 'branch', 'session', 'brands', 'categories', 'heldCount', 'initialCart', 'initialCartCount', 'initialSubtotal', 'initialTax', 'coupons', 'shippingFee', 'courierCompanies'));
     }
 
     // -------------------------------------------------------------------------
@@ -60,6 +62,7 @@ class PosController extends Controller
     {
         $q          = $request->input('q', '');
         $category   = $request->input('category');
+        $brand      = $request->input('brand');
 
         $query = Product::with(['variants' => fn($q) => $q->where('is_active', true)->where('stock_qty', '>', 0)])
             ->where('stock_status', 'instock')
@@ -74,6 +77,9 @@ class PosController extends Controller
         }
         if ($category) {
             $query->where('category_id', $category);
+        }
+        if ($brand) {
+            $query->where('brand_id', $brand);
         }
 
         $products = $query->limit(24)->get();

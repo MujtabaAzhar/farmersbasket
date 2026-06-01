@@ -241,10 +241,10 @@
 
                 <div class="pay-method-group">
                     <button type="button" class="pay-method-btn selected" onclick="selectPayment('cash')" id="pm-cash">
-                        <i class="icon-money"></i> Cash
+                        <i >RS</i> Cash
                     </button>
                     <button type="button" class="pay-method-btn" onclick="selectPayment('online_transfer')" id="pm-online_transfer">
-                        <i class="icon-mobile"></i> Online Transfer
+                        <i class="icon-smartphone"></i> Online Transfer
                     </button>
                 </div>
                 <input type="hidden" name="payment_method" id="payment_method" value="cash">
@@ -255,6 +255,7 @@
                         <label>Cash Received (Rs)</label>
                         <input type="number" name="cash_received" id="cash-received-input" min="0" step="0.01"
                                placeholder="Enter amount received" oninput="calcChange()">
+                        <div id="cash-error" style="display:none; color:#e74c3c; font-size:12px; font-weight:600; margin-top:5px; padding:6px 10px; background:#fdf0ef; border:1px solid #f5c6c6; border-radius:6px;"></div>
                     </div>
                     <div class="change-display" id="change-display">
                         Change: Rs <span id="change-amount">0.00</span>
@@ -521,17 +522,46 @@ function setVerified(val) {
     }
 }
 
-// Show loader on form submit
-$('#checkout-form').on('submit', function(){
-    var courier = $('#f_courier_name').val();
-    var method  = $('#payment_method').val();
-    var methodLabel = method === 'cash' ? 'Cash' : 'Online Transfer';
-    var sub = courier ? 'Via ' + courier + ' · ' + methodLabel : methodLabel;
-    PosLoader.show('Placing Order', sub);
-});
+// ─── Single submit handler: validate → loader → clear session ─────────────────
+$('#checkout-form').on('submit', function(e){
 
-// Clear POS session when order is placed so stale data isn't restored on next visit
-$('#checkout-form').on('submit', function(){
+    // 1. Cash validation
+    if ($('#payment_method').val() === 'cash') {
+        var received = parseFloat($('#cash-received-input').val());
+        var total    = getCurrentTotal();
+        var $err     = $('#cash-error');
+        var $input   = $('#cash-received-input');
+
+        $err.hide().text('');
+        $input.css('border-color', '');
+
+        if (isNaN(received) || $('#cash-received-input').val() === '') {
+            $err.text('⚠ Please enter the cash amount received.').show();
+            $input.css('border-color', '#e74c3c').focus();
+            return false;
+        }
+        if (received < 0) {
+            $err.text('⚠ Cash amount cannot be negative.').show();
+            $input.css('border-color', '#e74c3c').focus();
+            return false;
+        }
+        if (received < total) {
+            var short = (total - received).toLocaleString('en-PK', { minimumFractionDigits: 2 });
+            $err.text('⚠ Cash received is Rs ' + short + ' short of the total (Rs ' +
+                total.toLocaleString('en-PK', { minimumFractionDigits: 2 }) +
+                '). Please collect the full amount.').show();
+            $input.css('border-color', '#e74c3c').focus();
+            return false;
+        }
+    }
+
+    // 2. Show loader (only reached if validation passed)
+    var courier     = $('#f_courier_name').val();
+    var method      = $('#payment_method').val();
+    var methodLabel = method === 'cash' ? 'Cash' : 'Online Transfer';
+    PosLoader.show('Placing Order', courier ? 'Via ' + courier + ' · ' + methodLabel : methodLabel);
+
+    // 3. Clear saved POS session data
     ['pos_customer_id','pos_customer_phone','pos_customer_name',
      'pos_order_type','pos_address_id','pos_delivery_address','pos_delivery_city',
      'pos_save_customer','pos_coupon_code','pos_discount','pos_order_note',
@@ -541,6 +571,12 @@ $('#checkout-form').on('submit', function(){
      'pos_gift_message','pos_delivery_date','pos_gift_wrapping',
      'pos_courier_name','pos_courier_fee'
     ].forEach(function(k){ sessionStorage.removeItem(k); });
+});
+
+// Clear error styling when cashier corrects the input
+$('#cash-received-input').on('input', function(){
+    $('#cash-error').hide().text('');
+    $(this).css('border-color', '');
 });
 </script>
 @endpush

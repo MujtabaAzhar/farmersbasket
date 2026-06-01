@@ -59,7 +59,12 @@
             background: #f0f2f5; border: none; border-radius: 20px;
             padding: 4px 14px; font-size: 12px; cursor: pointer; white-space: nowrap;
         }
-        .cat-btn.active { background: #2ecc71; color: #fff; }
+        .cat-btn.active  { background: #2ecc71; color: #fff; }
+        .brand-btn {
+            background: #f0f2f5; border: none; border-radius: 20px;
+            padding: 4px 14px; font-size: 12px; cursor: pointer; white-space: nowrap;
+        }
+        .brand-btn.active { background: #e67e22; color: #fff; }
         .pos-products-grid {
             flex: 1; overflow-y: auto; padding: 10px 12px;
             display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;

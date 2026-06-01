@@ -449,7 +449,7 @@ function printScreenReceipt() {
             +   '</div>'
             + '</div>'
             + '<div class="r-hdr-right">'
-            +   '<div class="r-banner">FARMER\'S BASKET</div>'
+            +   '<div class="r-banner">' + escH(d.courierName || 'FARMER\'S BASKET') + '</div>'
             +   '<div class="r-inv-block">Invoice No:<br><strong>' + escH(d.orderNumber) + ' / ' + d.totalQty + '</strong></div>'
             + '</div>'
             + '</div>';

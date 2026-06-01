@@ -15,10 +15,18 @@
         </div>
 
         {{-- Category filters --}}
-        <div class="pos-categories">
+        <div class="pos-categories" style="border-bottom:none; padding-bottom:4px;">
             <button class="cat-btn active" data-cat="">All</button>
             @foreach($categories as $cat)
                 <button class="cat-btn" data-cat="{{ $cat->id }}">{{ $cat->name }}</button>
+            @endforeach
+        </div>
+
+        {{-- Brand filters --}}
+        <div class="pos-categories">
+            <button class="brand-btn active" data-brand="">All Brands</button>
+            @foreach($brands as $brand)
+                <button class="brand-btn" data-brand="{{ $brand->id }}">{{ $brand->name }}</button>
             @endforeach
         </div>
 
@@ -373,21 +381,30 @@ var searchTimer;
 $('#pos-search').on('input', function(){
     clearTimeout(searchTimer);
     searchTimer = setTimeout(function(){
-        loadProducts($('#pos-search').val(), activeCat);
+        loadProducts($('#pos-search').val(), activeCat, activeBrand);
     }, 280);
 });
 
-var activeCat = '';
+var activeCat   = '';
+var activeBrand = '';
+
+$('.brand-btn').on('click', function(){
+    $('.brand-btn').removeClass('active');
+    $(this).addClass('active');
+    activeBrand = $(this).data('brand');
+    loadProducts($('#pos-search').val(), activeCat, activeBrand);
+});
+
 $('.cat-btn').on('click', function(){
     $('.cat-btn').removeClass('active');
     $(this).addClass('active');
     activeCat = $(this).data('cat');
-    loadProducts($('#pos-search').val(), activeCat);
+    loadProducts($('#pos-search').val(), activeCat, activeBrand);
 });
 
-function loadProducts(q, cat){
+function loadProducts(q, cat, brand){
     $('#pos-products-grid').html('<div style="grid-column:1/-1;text-align:center;padding:40px;color:#aaa;">Loading…</div>');
-    $.get('{{ route('pos.products.search') }}', {q: q, category: cat}, function(html){
+    $.get('{{ route('pos.products.search') }}', {q: q, category: cat, brand: brand}, function(html){
         $('#pos-products-grid').html(html);
     });
 }
