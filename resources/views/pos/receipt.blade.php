@@ -506,7 +506,7 @@ function printScreenReceipt() {
                 : '';
             deliveryRow = '<tr>'
                 + '<td class="r-dt-lbl">Delivery By: ' + courierLabel + '</td>'
-                + '<td class="r-dt-mid"></td>'
+                  + '<td class="r-dt-mid">' + d.totalQty + ' &times; ' + fmt(d.shipping / d.totalQty) + '</td>'
                 + '<td class="r-dt-val">' + fmt(d.shipping) + '</td>'
                 + '</tr>';
         }
@@ -577,7 +577,7 @@ function printScreenReceipt() {
         '.r-dt-mid        { width:25%; text-align:center; color:#333; }',
         '.r-dt-val        { width:20%; text-align:right; font-weight:600; }',
         '.r-dt-grand      { font-weight:bold; font-size:10pt; }',
-        '.r-brand         { font-size:7.5pt; color:#555; font-style:italic; margin-left:3px; }',
+        '.r-brand         {background:#000; color:#fff; font-weight:bold; font-size:8pt; margin-left:3px; }',
         '.r-thin-line     { border-top:1px solid #000; margin:2px 0; }',
         '.r-courier-banner{ background:#000; color:#fff; font-weight:bold; padding:1px 6px; font-size:8pt; letter-spacing:.5px; }',
 

@@ -643,9 +643,9 @@ function renderSummary(){
     var isDelivery = posState.isGift || posState.orderType === 'booking';
     var shipping;
     if (isDelivery && posState.courierCompanies.length > 0) {
-        shipping = posState.selectedCourierFee || 0;
+        shipping = (posState.selectedCourierFee || 0) * Math.max(1, posState.cartCount);
     } else {
-        shipping = isDelivery ? (posState.shippingFee || 0) : 0;
+        shipping = isDelivery ? ((posState.shippingFee || 0) * Math.max(1, posState.cartCount)) : 0;
     }
     var disc = posState.couponDiscount || 0;
     var total      = Math.max(0, posState.subtotal + posState.tax + shipping - disc);

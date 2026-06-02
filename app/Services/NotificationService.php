@@ -253,15 +253,22 @@ class NotificationService
     {
         // Prefer the linked user's email
         if ($order->user_id && $order->relationLoaded('user') && $order->user?->email) {
-            return $order->user->email;
+            $email = $order->user->email;
+            return self::isFakePosEmail($email) ? null : $email;
         }
         if ($order->user_id) {
             $user = \App\Models\User::find($order->user_id);
-            if ($user?->email) {
+            if ($user?->email && !self::isFakePosEmail($user->email)) {
                 return $user->email;
             }
         }
         return null;
+    }
+
+    private static function isFakePosEmail(string $email): bool
+    {
+        return str_ends_with($email, '@pos.local')
+            || str_ends_with($email, '@walkin.pos');
     }
 
     private static function resolvePhone(Order $order): ?string

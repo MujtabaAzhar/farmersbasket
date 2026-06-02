@@ -358,13 +358,14 @@ class PosController extends Controller
         $subtotal         = Cart::instance(self::CART)->subtotal(2, '.', '');
         $tax              = Cart::instance(self::CART)->tax(2, '.', '');
         $baseTotal        = Cart::instance(self::CART)->total(2, '.', '');
-        $shippingFee      = (float) Setting::get('shipping_fee', config('cart.shipping', 0));
+        $totalQty         = (int) Cart::instance(self::CART)->count();
+        $shippingFee      = (float) Setting::get('shipping_fee', config('cart.shipping', 0)) * max(1, $totalQty);
         $courierCompanies = json_decode(Setting::get('courier_companies', '[]'), true) ?: [];
         $user             = Auth::user();
         $branch           = $user->branch;
         $session          = $user->activeSession();
 
-        return view('pos.checkout', compact('cartItems', 'subtotal', 'tax', 'baseTotal', 'shippingFee', 'courierCompanies', 'user', 'branch', 'session'));
+        return view('pos.checkout', compact('cartItems', 'subtotal', 'tax', 'baseTotal', 'shippingFee', 'totalQty', 'courierCompanies', 'user', 'branch', 'session'));
     }
 
     public function place_order(Request $request)
@@ -469,14 +470,16 @@ class PosController extends Controller
         }
 
         // Compute totals
-        $subtotal    = (float) str_replace(',', '', Cart::instance(self::CART)->subtotal(2, '.', ''));
-        $tax         = (float) str_replace(',', '', Cart::instance(self::CART)->tax(2, '.', ''));
-        $discount    = (float) ($request->discount_amount ?? 0);
-        $isDelivery  = ($request->order_type === 'booking') || ((bool) $request->is_gift);
-        $shippingFee = $isDelivery && $request->filled('courier_fee')
+        $subtotal     = (float) str_replace(',', '', Cart::instance(self::CART)->subtotal(2, '.', ''));
+        $tax          = (float) str_replace(',', '', Cart::instance(self::CART)->tax(2, '.', ''));
+        $discount     = (float) ($request->discount_amount ?? 0);
+        $isDelivery   = ($request->order_type === 'booking') || ((bool) $request->is_gift);
+        $totalQty     = (int) Cart::instance(self::CART)->count();
+        $baseShipping = (float) Setting::get('shipping_fee', config('cart.shipping', 0));
+        $shippingFee  = $isDelivery && $request->filled('courier_fee')
             ? (float) $request->courier_fee
-            : (float) Setting::get('shipping_fee', config('cart.shipping', 0));
-        $shipping    = $isDelivery ? $shippingFee : 0;
+            : $baseShipping * max(1, $totalQty);
+        $shipping     = $isDelivery ? $shippingFee : 0;
         $total       = max(0, $subtotal + $tax + $shipping - $discount);
 
         // Build order

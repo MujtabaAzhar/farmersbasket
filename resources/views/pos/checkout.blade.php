@@ -338,6 +338,7 @@
 // Must be declared before the IIFE so recalcTotal() has the value when it runs.
 var baseTotal        = parseFloat('{{ $baseTotal }}') || 0;
 var defaultShipping  = parseFloat('{{ $shippingFee }}') || 0;
+var totalQty         = parseInt('{{ $totalQty }}') || 1;
 var isDelivery       = (sessionStorage.getItem('pos_order_type') === 'booking') || (sessionStorage.getItem('pos_is_gift') === '1');
 var courierCompanies = @json($courierCompanies);
 var orderShipping    = isDelivery ? defaultShipping : 0;
@@ -367,7 +368,7 @@ function selectCourier(btn) {
     btn.style.color       = '#1a6b3a';
 
     var name = btn.dataset.name;
-    var fee  = parseFloat(btn.dataset.fee) || 0;
+    var fee  = (parseFloat(btn.dataset.fee) || 0) * Math.max(1, totalQty);
     $('#f_courier_name').val(name);
     $('#f_courier_fee').val(fee);
     orderShipping = fee;
