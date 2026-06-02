@@ -438,14 +438,23 @@ class PosController extends Controller
                 ]);
             }
         } else {
-            $customerObj = User::firstOrCreate(
-                ['mobile' => $phone],
-                [
-                    'name'     => $request->customer_name ?? 'Walk-in Customer',
+            $customerObj = User::where('mobile', $phone)->first();
+            $providedName = trim($request->customer_name ?? '');
+
+            if ($customerObj) {
+                // Update name if cashier typed a non-empty name
+                if ($providedName && $providedName !== 'Walk-in Customer') {
+                    $customerObj->update(['name' => $providedName]);
+                    $customerObj->refresh();
+                }
+            } else {
+                $customerObj = User::create([
+                    'mobile'   => $phone,
+                    'name'     => $providedName ?: 'Walk-in Customer',
                     'email'    => 'pos' . time() . '@pos.local',
                     'password' => bcrypt($phone),
-                ]
-            );
+                ]);
+            }
             $customerId    = $customerObj->id;
             $customerName  = $customerObj->name;
             $customerPhone = $phone;

@@ -316,11 +316,13 @@ var stickerData = @json($stickerPayload);
                'address' => $gift->receiver_address ?? '', 'city' => $gift->receiver_city ?? '']
             : ['name' => $order->name ?? '', 'phone' => $order->phone ?? '',
                'address' => $order->address ?? '', 'city' => $order->city ?? ''],
-        'from' => [
-            'name'  => $order->branch?->name ?: "FARMER'S BASKET",
-            'phone' => '03-111-222-384',
-            'city'  => $order->branch?->city  ?: 'Lahore',
-        ],
+        'from' => $gift
+            ? ['name'  => $gift->sender_name  ?: "FARMER'S BASKET",
+               'phone' => $gift->sender_phone ?: '03-111-222-384',
+               'city'  => $gift->sender_city  ?: '']
+            : ['name'  => $order->branch?->name ?: "FARMER'S BASKET",
+               'phone' => '03-111-222-384',
+               'city'  => $order->branch?->city ?: 'Lahore'],
         'items'    => $order->orderItems->map(function ($i) {
             return [
                 'name'    => $i->product?->name ?? ('Product #' . $i->product_id),
@@ -460,7 +462,7 @@ function printScreenReceipt() {
             +   '</div>'
             + '</div>'
             + '<div class="r-hdr-right">'
-            +   '<div class="r-banner">' + escH(d.courierName || 'FARMER\'S BASKET') + '</div>'
+            +   '<div class="r-banner">' + escH(d.courierName || 'COUNTER SALE') + '</div>'
             +   '<div class="r-inv-block">Invoice No:<br><strong>' + escH(d.orderNumber) + ' / ' + d.totalQty + '</strong></div>'
             + '</div>'
             + '</div>';
