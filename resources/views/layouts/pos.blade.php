@@ -309,6 +309,10 @@
             <a href="{{ route('pos.supervisor') }}">Dashboard</a>
         @endif
         <a href="{{ route('pos.sessions') }}">Shifts</a>
+        <button type="button" onclick="openExpenseModal()"
+                style="background:#e74c3c;border:none;color:#fff;border-radius:7px;padding:5px 13px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;">
+            <i class="icon-dollar-sign" style="font-size:13px;"></i> Expense
+        </button>
         <form action="{{ route('logout') }}" method="POST" style="display:inline">
             @csrf
             <button type="submit" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:12px;">Logout</button>
@@ -374,5 +378,159 @@ var PosLoader = (function () {
 }());
 </script>
 @stack('scripts')
+
+{{-- ── Expense Modal ── --}}
+<style>
+#expense-modal-bg {
+    display: none; position: fixed; inset: 0; z-index: 99990;
+    background: rgba(0,0,0,.5); align-items: center; justify-content: center;
+}
+#expense-modal-bg.open { display: flex; }
+#expense-modal {
+    background: #fff; border-radius: 14px; width: 420px; max-width: 95vw;
+    padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    position: relative;
+}
+#expense-modal h5 {
+    font-size: 16px; font-weight: 700; color: #1a1f2e;
+    margin-bottom: 18px; display: flex; align-items: center; gap: 8px;
+}
+#expense-modal h5 span { color: #e74c3c; }
+.exp-field { margin-bottom: 12px; }
+.exp-field label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px; }
+.exp-field input, .exp-field select, .exp-field textarea {
+    width: 100%; border: 1px solid #ddd; border-radius: 7px;
+    padding: 7px 10px; font-size: 13px; outline: none;
+    font-family: inherit;
+}
+.exp-field input:focus, .exp-field select:focus, .exp-field textarea:focus {
+    border-color: #2ecc71; box-shadow: 0 0 0 3px rgba(46,204,113,.12);
+}
+.exp-row { display: flex; gap: 10px; }
+.exp-row .exp-field { flex: 1; }
+.exp-btn-row { display: flex; gap: 8px; margin-top: 16px; }
+.exp-submit {
+    flex: 1; background: #e74c3c; color: #fff; border: none;
+    border-radius: 8px; padding: 10px; font-size: 14px; font-weight: 700;
+    cursor: pointer;
+}
+.exp-submit:hover { background: #c0392b; }
+.exp-cancel {
+    background: #f5f5f5; color: #555; border: none;
+    border-radius: 8px; padding: 10px 18px; font-size: 13px;
+    font-weight: 600; cursor: pointer;
+}
+.exp-cancel:hover { background: #eee; }
+#expense-success {
+    display: none; background: #f0fdf4; border: 1px solid #bbf7d0;
+    border-radius: 8px; padding: 10px 14px; font-size: 13px;
+    color: #166534; font-weight: 600; margin-top: 10px; text-align: center;
+}
+</style>
+
+<div id="expense-modal-bg" onclick="closeExpenseOnBg(event)">
+    <div id="expense-modal">
+        <h5><span>💸</span> Record Expense</h5>
+
+        <form id="expense-form">
+            @csrf
+            <div class="exp-field">
+                <label>Description *</label>
+                <input type="text" id="exp-description" placeholder="e.g. Delivery charges" required>
+            </div>
+            <div class="exp-row">
+                <div class="exp-field">
+                    <label>Category *</label>
+                    <select id="exp-category">
+                        <option value="General">General</option>
+                        <option value="Transport">Transport</option>
+                        <option value="Packaging">Packaging</option>
+                        <option value="Salaries">Salaries</option>
+                        <option value="Utilities">Utilities</option>
+                        <option value="Rent">Rent</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Maintenance">Maintenance</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="exp-field">
+                    <label>Amount (Rs) *</label>
+                    <input type="number" id="exp-amount" placeholder="0.00" min="0.01" step="0.01" required>
+                </div>
+            </div>
+            <div class="exp-row">
+                <div class="exp-field">
+                    <label>Date *</label>
+                    <input type="date" id="exp-date" required>
+                </div>
+            </div>
+            <div class="exp-field">
+                <label>Notes (optional)</label>
+                <textarea id="exp-notes" rows="2" placeholder="Any additional detail…"></textarea>
+            </div>
+            <div id="expense-error" style="display:none;color:#e74c3c;font-size:12px;margin-top:6px;"></div>
+            <div id="expense-success">✓ Expense recorded successfully!</div>
+            <div class="exp-btn-row">
+                <button type="submit" class="exp-submit" id="exp-submit-btn">Save Expense</button>
+                <button type="button" class="exp-cancel" onclick="closeExpenseModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openExpenseModal() {
+    document.getElementById('expense-modal-bg').classList.add('open');
+    // Set today's date
+    var today = new Date().toISOString().split('T')[0];
+    document.getElementById('exp-date').value = today;
+    document.getElementById('exp-description').focus();
+    document.getElementById('expense-success').style.display = 'none';
+    document.getElementById('expense-error').style.display = 'none';
+}
+function closeExpenseModal() {
+    document.getElementById('expense-modal-bg').classList.remove('open');
+    document.getElementById('expense-form').reset();
+    document.getElementById('expense-success').style.display = 'none';
+    document.getElementById('expense-error').style.display = 'none';
+}
+function closeExpenseOnBg(e) {
+    if (e.target === document.getElementById('expense-modal-bg')) closeExpenseModal();
+}
+
+document.getElementById('expense-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var btn = document.getElementById('exp-submit-btn');
+    var errEl = document.getElementById('expense-error');
+    errEl.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    $.post('{{ route('pos.expense.store') }}', {
+        description:  document.getElementById('exp-description').value,
+        category:     document.getElementById('exp-category').value,
+        amount:       document.getElementById('exp-amount').value,
+        expense_date: document.getElementById('exp-date').value,
+        notes:        document.getElementById('exp-notes').value,
+    }, function(res) {
+        if (res.success) {
+            document.getElementById('expense-success').style.display = 'block';
+            document.getElementById('expense-form').reset();
+            setTimeout(closeExpenseModal, 1400);
+        } else {
+            errEl.textContent = res.message || 'Failed to save expense.';
+            errEl.style.display = 'block';
+        }
+    }).fail(function(xhr) {
+        var msg = 'Error saving expense.';
+        if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
+        errEl.textContent = msg;
+        errEl.style.display = 'block';
+    }).always(function() {
+        btn.disabled = false;
+        btn.textContent = 'Save Expense';
+    });
+});
+</script>
 </body>
 </html>

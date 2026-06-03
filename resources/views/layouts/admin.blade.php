@@ -243,6 +243,25 @@
                                     </a>
                                 </li>
 
+                                <li class="menu-item has-children {{ request()->routeIs('admin.report.*','admin.expenses','admin.expense.*') ? 'open' : '' }}">
+                                    <a href="javascript:void(0);" class="menu-item-button">
+                                        <div class="icon"><i class="icon-file-text"></i></div>
+                                        <div class="text">Reports</div>
+                                    </a>
+                                    <ul class="sub-menu">
+                                        <li class="sub-menu-item">
+                                            <a href="{{ route('admin.report.index') }}" class="{{ request()->routeIs('admin.report.*') ? 'active' : '' }}">
+                                                <div class="text">Generate Report</div>
+                                            </a>
+                                        </li>
+                                        <li class="sub-menu-item">
+                                            <a href="{{ route('admin.expenses') }}" class="{{ request()->routeIs('admin.expenses','admin.expense.*') ? 'active' : '' }}">
+                                                <div class="text">Expenses</div>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
+
                                 <li class="menu-item">
                                     <a href="{{ route('admin.settings') }}" class="{{ request()->routeIs('admin.settings') ? 'active' : '' }}">
                                         <div class="icon"><i class="icon-settings"></i></div>
@@ -285,6 +304,13 @@
 
                             </div>
                             <div class="header-grid">
+
+                                {{-- Report quick-access button --}}
+                                <a href="{{ route('admin.report.index') }}"
+                                   title="Generate Report"
+                                   style="display:inline-flex;align-items:center;gap:6px;background:#1a472a;color:#fff;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap;">
+                                    <i class="icon-file-text" style="font-size:14px;"></i> Report
+                                </a>
 
                                 <div class="popup-wrap message type-header">
                                     <div class="dropdown">

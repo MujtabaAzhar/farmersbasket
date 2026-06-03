@@ -33,7 +33,7 @@
     <link rel="stylesheet" href="{{ asset('assets/css/main.css') }}">
 
     <style>
-      
+
 
 .mango-text-item{
     color: #ffffff;
@@ -45,6 +45,31 @@
     font-family: 'Poppins', sans-serif;
 }
 
+/* ── Page action loader ───────────────────────────────── */
+#ec-page-loader {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(255,255,255,0.82);
+    z-index: 99998;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    backdrop-filter: blur(2px);
+}
+#ec-page-loader.active { display: flex; }
+.ec-loader-spinner {
+    width: 52px; height: 52px;
+    border: 4px solid #e8f5e9;
+    border-top-color: #2e7d32;
+    border-radius: 50%;
+    animation: ec-spin .75s linear infinite;
+}
+@keyframes ec-spin { to { transform: rotate(360deg); } }
+#ec-page-loader p {
+    margin-top: 14px; font-size: 14px;
+    color: #444; font-family: inherit; font-weight: 500;
+}
 
     </style>
     @stack("styles")
@@ -57,7 +82,7 @@
         </button> -->
 
      <!-- Preloader Start -->
-    <div id="preloader" class="preloader">
+    {{-- <div id="preloader" class="preloader">
         <div class="animation-preloader">
             <div class="spinner">
             </div>
@@ -102,7 +127,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> --}}
 
     <!-- Offcanvas Area Start -->
     <div class="fix-area">
@@ -476,5 +501,92 @@
     <script src="{{ asset('assets/js/main.js') }}"></script>
 
   @stack("scripts")
+
+<!-- ── Page action loader ─────────────────────────────── -->
+<div id="ec-page-loader">
+    <div class="ec-loader-spinner"></div>
+    <p id="ec-loader-msg">Please wait…</p>
+</div>
+
+<script>
+(function () {
+    var loader  = document.getElementById('ec-page-loader');
+    var loaderMsg = document.getElementById('ec-loader-msg');
+
+    function showLoader(msg) {
+        loaderMsg.textContent = msg || 'Please wait…';
+        loader.classList.add('active');
+    }
+
+    // ── Form submissions ───────────────────────────────
+    // Runs after element handlers so e.defaultPrevented catches JS-validated forms.
+    document.addEventListener('submit', function (e) {
+        if (e.defaultPrevented) return; // validation blocked it or AJAX handled it
+
+        var form = e.target;
+        if (form.dataset.noLoader) return;
+
+        // Pick a contextual message based on form action
+        var action = (form.action || '').toLowerCase();
+        var msg = 'Please wait…';
+        if (action.includes('place-an-order') || action.includes('order/place')) {
+            msg = 'Placing your order…';
+        } else if (action.includes('cart/add') || action.includes('cart.add')) {
+            msg = 'Adding to cart…';
+        } else if (action.includes('checkout')) {
+            msg = 'Loading checkout…';
+        } else if (action.includes('coupon')) {
+            msg = 'Applying coupon…';
+        }
+
+        // Disable all submit buttons so double-click is prevented
+        form.querySelectorAll('[type="submit"]').forEach(function (btn) {
+            btn.disabled = true;
+        });
+
+        showLoader(msg);
+    });
+
+    // ── Link-click navigation ──────────────────────────
+    document.addEventListener('click', function (e) {
+        var link = e.target.closest('a[href]');
+        if (!link) return;
+
+        var href = link.getAttribute('href') || '';
+
+        // Skip: external / blank / hash-only / javascript / modal / dropdown toggles
+        if (
+            link.target === '_blank'                     ||
+            href === '#' || href === ''                  ||
+            href.startsWith('javascript')               ||
+            href.startsWith('mailto')                   ||
+            href.startsWith('tel')                      ||
+            href.startsWith('#')                        ||
+            link.dataset.bsToggle                       ||
+            link.dataset.bsDismiss                      ||
+            link.dataset.noLoader                       ||
+            link.classList.contains('search-trigger')
+        ) return;
+
+        // Only trigger for same-origin navigations
+        try {
+            var url = new URL(href, window.location.origin);
+            if (url.origin !== window.location.origin) return;
+        } catch (_) { return; }
+
+        showLoader('Loading…');
+    });
+
+    // ── Hide loader if browser goes back/forward (bfcache) ──
+    window.addEventListener('pageshow', function (e) {
+        if (e.persisted) {
+            loader.classList.remove('active');
+            document.querySelectorAll('[type="submit"][disabled]').forEach(function (btn) {
+                btn.disabled = false;
+            });
+        }
+    });
+})();
+</script>
 </body>
 </html>

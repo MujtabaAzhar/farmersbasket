@@ -161,10 +161,13 @@
                                                         <div
                                                             class="theme2-bg rounded-1 d-center fs-10 text-white w-16px h-16px">
                                                             <i class="fa-solid fa-star"></i>
-                                                        </div> <span><span class="text-black">4.8</span>
-                                                            {{ $product->short_description }}</span>
+                                                        </div> <span><span class="text-black">4.8</span></span> </br>
+                                                   
                                                     </div>
                                                 </div>
+                                                     <p class="fs-12 mb-2 lh-18">
+                                                    {{ $product->short_description }}
+                                                </p>
                                                 <p class="fs-12 mb-2 lh-18">
                                                     {{ $product->category->name }} <br> {{ $product->brand->name }}
                                                 </p>

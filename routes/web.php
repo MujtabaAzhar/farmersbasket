@@ -10,6 +10,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\WishlistController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Middleware\AuthAdmin;
 
 Auth::routes();
@@ -34,6 +35,7 @@ Route::middleware(['auth', 'auth.pos'])->group(function () {
     Route::get('/pos/checkout', [PosController::class, 'checkout'])->name('pos.checkout');
     Route::post('/pos/order/place', [PosController::class, 'place_order'])->name('pos.order.place');
     Route::get('/pos/receipt/{id}', [PosController::class, 'receipt'])->name('pos.receipt');
+    Route::post('/pos/expense',     [PosController::class, 'expense_store'])->name('pos.expense.store');
     Route::get('/pos/sessions', [PosController::class, 'sessions'])->name('pos.sessions');
     Route::post('/pos/session/open', [PosController::class, 'session_open'])->name('pos.session.open');
     Route::post('/pos/session/close', [PosController::class, 'session_close'])->name('pos.session.close');
@@ -186,6 +188,13 @@ Route::middleware(['auth',AuthAdmin::class])->group(function () {
     Route::post('/admin/settings/profile', [AdminController::class, 'settings_profile'])->name('admin.settings.profile');
     Route::post('/admin/settings/password', [AdminController::class, 'settings_password'])->name('admin.settings.password');
     Route::post('/admin/settings/shipping', [AdminController::class, 'settings_shipping'])->name('admin.settings.shipping');
+
+    // ── Reports & Expenses ───────────────────────────────────────────
+    Route::get('/admin/report',          [ReportController::class, 'index'])->name('admin.report.index');
+    Route::get('/admin/report/pdf',      [ReportController::class, 'pdf'])->name('admin.report.pdf');
+    Route::get('/admin/expenses',        [ReportController::class, 'expenses'])->name('admin.expenses');
+    Route::post('/admin/expenses',       [ReportController::class, 'expense_store'])->name('admin.expense.store');
+    Route::delete('/admin/expenses/{id}',[ReportController::class, 'expense_delete'])->name('admin.expense.delete');
     Route::post('/admin/settings/couriers', [AdminController::class, 'settings_courier_add'])->name('admin.settings.courier.add');
     Route::post('/admin/settings/couriers/delete', [AdminController::class, 'settings_courier_delete'])->name('admin.settings.courier.delete');
 

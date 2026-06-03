@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AdminNotification;
+use App\Models\Expense;
 use App\Services\NotificationService;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -770,6 +771,35 @@ class PosController extends Controller
     // Admin: Branch & Cashier Management (called from AdminController)
     // -------------------------------------------------------------------------
     // (These are kept in AdminController for sidebar consistency — see AdminController)
+
+    // -------------------------------------------------------------------------
+    // Expense (POS cashier)
+    // -------------------------------------------------------------------------
+
+    public function expense_store(Request $request)
+    {
+        $request->validate([
+            'description'  => 'required|string|max:255',
+            'category'     => 'required|string|max:100',
+            'amount'       => 'required|numeric|min:0.01',
+            'expense_date' => 'required|date',
+            'notes'        => 'nullable|string|max:500',
+        ]);
+
+        $user = Auth::user();
+
+        Expense::create([
+            'description'  => $request->description,
+            'category'     => $request->category,
+            'amount'       => $request->amount,
+            'expense_date' => $request->expense_date,
+            'branch_id'    => $user->branch_id ?? null,
+            'recorded_by'  => $user->id,
+            'notes'        => $request->notes,
+        ]);
+
+        return response()->json(['success' => true]);
+    }
 
     // -------------------------------------------------------------------------
     // Private helpers
