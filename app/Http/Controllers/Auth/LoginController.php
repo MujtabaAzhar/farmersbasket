@@ -23,7 +23,7 @@ class LoginController extends Controller
     // Redirect POS users to /pos, admins to /admin, others to /
     protected function authenticated(Request $request, $user)
     {
-        LoginActivityLog::log('login', $user->email, $user->id);
+        try { LoginActivityLog::log('login', $user->email, $user->id); } catch (\Throwable $e) {}
 
         if ($user->utype === 'ADM') {
             return redirect()->route('admin.index');
@@ -39,7 +39,7 @@ class LoginController extends Controller
     // Log failed login attempts before raising the exception
     protected function sendFailedLoginResponse(Request $request)
     {
-        LoginActivityLog::log('failed', $request->input($this->username()));
+        try { LoginActivityLog::log('failed', $request->input($this->username())); } catch (\Throwable $e) {}
 
         throw ValidationException::withMessages([
             $this->username() => [trans('auth.failed')],
@@ -56,7 +56,7 @@ class LoginController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        LoginActivityLog::log('logout', $email);
+        try { LoginActivityLog::log('logout', $email); } catch (\Throwable $e) {}
 
         return redirect('/');
     }

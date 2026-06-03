@@ -1385,10 +1385,14 @@ class AdminController extends Controller
         $request->validate([
             'pos_role'  => ['required', 'in:pos_supervisor,cashier'],
             'branch_id' => ['nullable', 'exists:branches,id'],
+            'password'  => ['nullable', 'string', 'min:6'],
         ]);
 
         $user->pos_role  = $request->pos_role;
         $user->branch_id = $request->branch_id;
+        if ($request->filled('password')) {
+            $user->password = bcrypt($request->password);
+        }
         $user->save();
 
         return back()->with('status', "{$user->name} updated.");
