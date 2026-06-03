@@ -676,7 +676,12 @@ class AdminController extends Controller
             $query->where('status', $request->status);
         }
 
-        $orders = $query->paginate(15)->withQueryString();
+        $orders = $query->with([
+            'orderItems.product.brand',
+            'giftOrder',
+            'cashier',
+            'branch',
+        ])->paginate(15)->withQueryString();
         return view('admin.orders', compact('orders'));
     }
 
