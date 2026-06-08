@@ -26,33 +26,85 @@ class CartController extends Controller
 {
     public function index()
     {
-         $shipping_fee = Setting::get('shipping_fee', config('cart.shipping', 0));
-        $items = Cart::instance('cart')->content();
-        return view('cart', compact('items', 'shipping_fee'));
+        $shipping_fee = Setting::get('shipping_fee', config('cart.shipping', 0));
+        $items        = Cart::instance('cart')->content();
+
+        // Build variantId → stock_qty map so the view can disable the + button
+        $variantIds = $items->map(fn($i) => $i->options->variant_id ?? null)->filter()->unique()->values();
+        $stockMap   = ProductVariant::whereIn('id', $variantIds)
+                        ->pluck('stock_qty', 'id');   // [variantId => stock_qty]
+
+        return view('cart', compact('items', 'shipping_fee', 'stockMap'));
     }
 
     public function add_to_cart(Request $request)
     {
-        $options = [];
+        $options      = [];
+        $requestedQty = max(1, (int) $request->quantity);
+
         if ($request->filled('variant_id')) {
             $variant = ProductVariant::find($request->variant_id);
-            if ($variant) {
-                $options['variant_id']    = $variant->id;
-                $options['variant_label'] = $variant->display_label;
-                // Use variant price if no explicit price passed
-                if (!$request->filled('price')) {
-                    $request->merge(['price' => $variant->price]);
+            if (!$variant) {
+                return redirect()->back()->with('error', 'Selected variant not found.');
+            }
+            if ($variant->stock_qty <= 0) {
+                return redirect()->back()->with('error', 'Sorry, "' . $variant->display_label . '" is out of stock.');
+            }
+
+            // How much of this variant is already in the cart?
+            $alreadyInCart = 0;
+            foreach (Cart::instance('cart')->content() as $cartItem) {
+                if ($cartItem->id == $request->id
+                    && ($cartItem->options->variant_id ?? null) == $variant->id) {
+                    $alreadyInCart = $cartItem->qty;
+                    break;
                 }
             }
+
+            $totalAfterAdd = $alreadyInCart + $requestedQty;
+            if ($totalAfterAdd > $variant->stock_qty) {
+                $canAdd = $variant->stock_qty - $alreadyInCart;
+                if ($canAdd <= 0) {
+                    return redirect()->back()->with('error',
+                        'You already have all ' . $variant->stock_qty . ' available units of "' . $variant->display_label . '" in your cart.');
+                }
+                return redirect()->back()->with('error',
+                    'Only ' . $variant->stock_qty . ' units available. You have ' . $alreadyInCart . ' in cart — you can add ' . $canAdd . ' more.');
+            }
+
+            $options['variant_id']    = $variant->id;
+            $options['variant_label'] = $variant->display_label;
+            if (!$request->filled('price')) {
+                $request->merge(['price' => $variant->price]);
+            }
+        } else {
+            $product = Product::find($request->id);
+            if ($product && $product->stock_status === 'outofstock') {
+                return redirect()->back()->with('error', 'Sorry, "' . $product->name . '" is currently out of stock.');
+            }
         }
-        Cart::instance('cart')->add($request->id, $request->name, $request->quantity, $request->price, $options)->associate('App\Models\Product');
-        return redirect()->back();
+
+        Cart::instance('cart')->add(
+            $request->id, $request->name, $requestedQty, $request->price, $options
+        )->associate('App\Models\Product');
+
+        return redirect()->back()->with('success', 'Added to cart!');
     }
 
     public function increase_cart_quantity($rowId)
     {
-        $product = Cart::instance('cart')->get($rowId);
-        Cart::instance('cart')->update($rowId, $product->qty + 1);
+        $cartItem  = Cart::instance('cart')->get($rowId);
+        $variantId = $cartItem->options->variant_id ?? null;
+
+        if ($variantId) {
+            $variant = ProductVariant::find($variantId);
+            if ($variant && ($cartItem->qty + 1) > $variant->stock_qty) {
+                return redirect()->back()->with('error',
+                    'Only ' . $variant->stock_qty . ' units available for "' . $variant->display_label . '".');
+            }
+        }
+
+        Cart::instance('cart')->update($rowId, $cartItem->qty + 1);
         return redirect()->back();
     }
     public function decrease_cart_quantity($rowId)
@@ -207,24 +259,24 @@ class CartController extends Controller
             $user_id = $user->id;
         }
 
-        // For regular orders: persist/reuse default address
+        // For regular orders: always save/update address from what the user typed
         if (!$isGift) {
-            $address = Address::where('user_id', $user_id)->where('isdefault', true)->first();
-            if (!$address) {
-                $address = new Address();
-                $address->user_id  = $user_id;
-                $address->name     = $request->name;
-                $address->phone    = $request->phone;
-                $address->zip      = $request->zip;
-                $address->state    = $request->state;
-                $address->city     = $request->city;
-                $address->address  = $request->address;
-                $address->locality = $request->locality;
-                $address->landmark = $request->landmark;
-                $address->country  = $request->country;
-                $address->isdefault = true;
-                $address->save();
-            }
+            $address = Address::where('user_id', $user_id)->where('isdefault', true)->firstOrNew([
+                'user_id'   => $user_id,
+                'isdefault' => true,
+            ]);
+            $address->user_id   = $user_id;
+            $address->isdefault = true;
+            $address->name      = $request->name;
+            $address->phone     = $request->phone;
+            $address->city      = $request->city;
+            $address->address   = $request->address;
+            $address->locality  = $request->locality;
+            $address->landmark  = $request->landmark;
+            $address->zip       = $request->zip;
+            $address->state     = $request->state;
+            $address->country   = $request->country;
+            $address->save();
         }
 
         $this->setAmountForCheckout();
@@ -249,22 +301,14 @@ class CartController extends Controller
             $order->address = $request->gift_receiver_address;
             $order->type    = 'gift';
         } else {
-            $order->name    = $address->name;
-            $order->phone   = $address->phone;
-            $order->city    = $address->city;
-            $order->address = $address->address;
+            // Always use what the customer typed on the checkout form
+            $order->name    = $request->name;
+            $order->phone   = $request->phone;
+            $order->city    = $request->city;
+            $order->address = $request->address;
         }
 
         $order->save();
-
-        AdminNotification::notify(
-            'new_order',
-            'New Online Order ' . $order->order_number,
-            ($order->name ?: 'Guest') . ' — Rs ' . number_format($order->total, 0),
-            route('admin.order.details', $order->id)
-        );
-
-        NotificationService::orderPlaced($order);
 
         // Save order items and deduct stock
         foreach (Cart::instance('cart')->content() as $item) {
@@ -327,6 +371,18 @@ class CartController extends Controller
         $transaction->status           = 'pending';
         $transaction->save();
 
+        // Reload order with all relationships so notifications have full data
+        $order->load(['orderItems.product', 'giftOrder', 'transaction']);
+
+        AdminNotification::notify(
+            'new_order',
+            'New Online Order ' . $order->order_number,
+            ($order->name ?: 'Guest') . ' — Rs ' . number_format($order->total, 0),
+            route('admin.order.details', $order->id)
+        );
+
+        NotificationService::orderPlaced($order);
+
         Cart::instance('cart')->destroy();
         Session::forget('checkout');
         Session::forget('coupon');
@@ -336,43 +392,42 @@ class CartController extends Controller
         return redirect()->route('cart.order.confirmation');
     }
     public function setAmountForCheckout()
-    { 
-        if(!Cart::instance('cart')->count() > 0)
-        {
+    {
+        $totalQty = (int) Cart::instance('cart')->count();
+
+        if (!$totalQty) {
             Session::forget('checkout');
             return;
-        }    
+        }
 
-        // Get shipping price from config
-        $shipping_fee = Setting::get('shipping_fee', config('cart.shipping', 0));
+        // Multiply shipping by quantity — same logic as POS
+        $base_fee     = (float) Setting::get('shipping_fee', config('cart.shipping', 0));
+        $shipping_fee = $base_fee * max(1, $totalQty);
 
-        if(Session::has('coupon'))
-        {
+        if (Session::has('coupon')) {
             $discount = Session::get('discounts')['discount'];
             $subtotal = Session::get('discounts')['subtotal'];
-            $tax = Session::get('discounts')['tax'];
-            $total = Session::get('discounts')['total'] + $shipping_fee;
+            $tax      = Session::get('discounts')['tax'];
+            $total    = Session::get('discounts')['total'] + $shipping_fee;
 
-            Session::put('checkout',[
+            Session::put('checkout', [
                 'discount' => $discount,
                 'subtotal' => $subtotal,
-                'tax' => $tax,
+                'tax'      => $tax,
                 'shipping' => $shipping_fee,
-                'total' => $total
+                'total'    => $total,
             ]);
-        }
-        else
-        {
+        } else {
             $subtotal = str_replace(',', '', Cart::instance('cart')->subtotal());
-            $tax = str_replace(',', '', Cart::instance('cart')->tax());
-            $total = str_replace(',', '', Cart::instance('cart')->total()) + $shipping_fee;
+            $tax      = str_replace(',', '', Cart::instance('cart')->tax());
+            $total    = str_replace(',', '', Cart::instance('cart')->total()) + $shipping_fee;
 
-            Session::put('checkout',[
+            Session::put('checkout', [
                 'discount' => 0,
                 'subtotal' => $subtotal,
-                'tax' => $tax,
+                'tax'      => $tax,
                 'shipping' => $shipping_fee,
-                'total' => $total
+                'total'    => $total,
             ]);
         }
     }

@@ -24,8 +24,85 @@
     <link rel="stylesheet" type="text/css" href="{{ asset('css/custom.css') }}">
 
     @stack("styles")
+<style>
+/* ── Admin Loader ─────────────────────────────────────────────── */
+#admin-loader {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: rgba(26, 31, 46, 0.55);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    align-items: center;
+    justify-content: center;
+}
+#admin-loader.active { display: flex; }
+
+.admin-loader-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 36px 48px 30px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    min-width: 200px;
+    animation: admin-loader-pop .2s ease;
+}
+@keyframes admin-loader-pop {
+    from { transform: scale(.88); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+}
+
+.admin-loader-ring {
+    width: 56px; height: 56px;
+    margin: 0 auto 16px;
+}
+.admin-loader-ring svg {
+    width: 56px; height: 56px;
+    animation: admin-spin .8s linear infinite;
+}
+@keyframes admin-spin { to { transform: rotate(360deg); } }
+
+.admin-loader-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a1f2e;
+    margin-bottom: 4px;
+    letter-spacing: .2px;
+}
+.admin-loader-sub {
+    font-size: 12px;
+    color: #999;
+    min-height: 16px;
+}
+.admin-loader-dots::after {
+    content: '';
+    animation: admin-dots 1.4s steps(4, end) infinite;
+}
+@keyframes admin-dots {
+    0%  { content: '';    }
+    25% { content: '.';   }
+    50% { content: '..';  }
+    75% { content: '...'; }
+}
+</style>
 </head>
 <body class="body">
+
+{{-- ── Admin Global Loading Overlay ── --}}
+<div id="admin-loader">
+    <div class="admin-loader-card">
+        <div class="admin-loader-ring">
+            <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="28" cy="28" r="22" stroke="#e8f5e9" stroke-width="5"/>
+                <path d="M28 6 A22 22 0 0 1 50 28" stroke="#2ecc71" stroke-width="5" stroke-linecap="round"/>
+            </svg>
+        </div>
+        <div class="admin-loader-title" id="admin-loader-title">Please wait</div>
+        <div class="admin-loader-sub" id="admin-loader-sub"></div>
+    </div>
+</div>
+
     <div id="wrapper">
         <div id="page" class="">
             <div class="layout-wrap">
@@ -185,13 +262,8 @@
                                     </a>
                                     <ul class="sub-menu">
                                         <li class="sub-menu-item">
-                                            <a href="{{ route('admin.dispatch.index') }}" class="{{ request()->routeIs('admin.dispatch.*') ? 'active' : '' }}">
-                                                <div class="text">Dispatch Board</div>
-                                            </a>
-                                        </li>
-                                        <li class="sub-menu-item">
                                             <a href="{{ route('admin.shipments.index') }}" class="{{ request()->routeIs('admin.shipments.*') ? 'active' : '' }}">
-                                                <div class="text">All Shipments</div>
+                                                <div class="text">Shipments</div>
                                             </a>
                                         </li>
                                         <li class="sub-menu-item">
@@ -572,7 +644,69 @@
       });
     });
 </script>
-   
+
+<script>
+(function () {
+    var loader     = document.getElementById('admin-loader');
+    var titleEl    = document.getElementById('admin-loader-title');
+    var subEl      = document.getElementById('admin-loader-sub');
+    var _shown     = false;
+    var _hideTimer = null;
+
+    function show(title, sub) {
+        if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+        titleEl.textContent = title || 'Please wait';
+        subEl.textContent   = sub   || '';
+        subEl.className     = sub ? 'admin-loader-sub' : 'admin-loader-sub admin-loader-dots';
+        loader.classList.add('active');
+        _shown = true;
+    }
+
+    function hide() {
+        loader.classList.remove('active');
+        _shown = false;
+    }
+
+    // Hide once the page is fully painted
+    window.addEventListener('load', function () { hide(); });
+    // Safety: always hide after 8 seconds
+    window.addEventListener('load', function () {
+        _hideTimer = setTimeout(hide, 8000);
+    });
+
+    // Show on navigation (all internal link clicks)
+    document.addEventListener('click', function (e) {
+        var a = e.target.closest('a');
+        if (!a) return;
+        var href = a.getAttribute('href');
+        if (!href) return;
+        if (href === '#' || href.startsWith('#') || href.startsWith('javascript') ||
+            a.getAttribute('target') === '_blank' ||
+            a.getAttribute('data-bs-toggle') ||
+            a.getAttribute('data-toggle') ||
+            a.classList.contains('dropdown-item') && !href.startsWith('/') && !href.startsWith('http')) return;
+        if (href.startsWith('http') && !href.startsWith(window.location.origin)) return;
+        // Skip download links
+        if (a.hasAttribute('download')) return;
+        show('Loading…');
+    }, true);
+
+    // Show on form submissions
+    document.addEventListener('submit', function (e) {
+        var form = e.target;
+        var method = (form.querySelector('input[name="_method"]') || {}).value || form.method;
+        method = (method || 'POST').toUpperCase();
+
+        var messages = {
+            'DELETE': ['Deleting…',   ''],
+            'PUT':    ['Saving…',     ''],
+            'PATCH':  ['Saving…',     ''],
+        };
+        var msg = messages[method] || ['Processing…', ''];
+        show(msg[0], msg[1]);
+    }, true);
+})();
+</script>
 </body>
 
 </html>

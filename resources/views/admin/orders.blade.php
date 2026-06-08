@@ -128,6 +128,7 @@
                                             style="width:16px;height:16px;cursor:pointer;">
                                     </th>
                                     <th style="width:100px">Order No</th>
+                                    <th class="text-center">Source</th>
                                     <th class="text-center">Name</th>
                                     <th class="text-center">Phone</th>
                                     <th class="text-center">Payment</th>
@@ -163,6 +164,13 @@
                                                 style="width:16px;height:16px;cursor:pointer;">
                                         </td>
                                         <td class="fw-600">{{ $order->order_number }}</td>
+                                        <td class="text-center">
+                                            @if($order->source === 'pos')
+                                                <span style="background:#e8f4fd;color:#1565c0;border:1px solid #bbdefb;border-radius:12px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap;">🖥 POS</span>
+                                            @else
+                                                <span style="background:#e8f5e9;color:#2e7d32;border:1px solid #c8e6c9;border-radius:12px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap;">🌐 Website</span>
+                                            @endif
+                                        </td>
                                         <td class="text-center">{{ $order->name ?: '—' }}</td>
                                         <td class="text-center">{{ $order->phone ?: '—' }}</td>
                                         <td class="text-center">
@@ -265,7 +273,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="12" class="text-center py-4 text-muted">No orders found.</td>
+                                        <td colspan="13" class="text-center py-4 text-muted">No orders found.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

@@ -220,11 +220,11 @@ Route::middleware(['auth',AuthAdmin::class])->group(function () {
 
     // Courier Services
     Route::get('/admin/couriers', [App\Http\Controllers\Admin\CourierServiceController::class, 'index'])->name('admin.couriers.index');
+    Route::post('/admin/couriers', [App\Http\Controllers\Admin\CourierServiceController::class, 'store'])->name('admin.couriers.store');
     Route::put('/admin/couriers/{courier}', [App\Http\Controllers\Admin\CourierServiceController::class, 'update'])->name('admin.couriers.update');
+    Route::delete('/admin/couriers/{courier}', [App\Http\Controllers\Admin\CourierServiceController::class, 'destroy'])->name('admin.couriers.destroy');
 
-    // Dispatch board
-    Route::get('/admin/dispatch', [App\Http\Controllers\Admin\DispatchController::class, 'index'])->name('admin.dispatch.index');
-    Route::post('/admin/dispatch/{shipment}/quick-update', [App\Http\Controllers\Admin\DispatchController::class, 'quickUpdate'])->name('admin.dispatch.quick');
+    // Dispatch board removed — quick-update now handled inline from shipments index
 
     // Riders
     Route::get('/admin/riders', [App\Http\Controllers\Admin\RiderController::class, 'index'])->name('admin.riders.index');

@@ -41,7 +41,7 @@ class ReportController extends Controller
         $branchId  = $request->branch_id;
 
         // ── Base order query ─────────────────────────────────────────
-        $orderQuery = Order::with(['orderItems.product', 'orderItems.variant', 'cashier', 'branch', 'posPayment'])
+        $orderQuery = Order::with(['orderItems.product', 'orderItems.variant', 'cashier', 'branch', 'posPayment', 'transaction'])
             ->whereBetween('created_at', [$from, $to])
             ->where('is_hold', false);
 
@@ -77,6 +77,14 @@ class ReportController extends Controller
         // ── By payment method (POS orders) ────────────────────────────
         $byPayment = $orders->filter(fn ($o) => $o->posPayment)
             ->groupBy(fn ($o) => $o->posPayment->method)
+            ->map(fn ($g) => [
+                'count' => $g->count(),
+                'total' => $g->sum('total'),
+            ]);
+
+        // ── By payment method (Website orders) ────────────────────────
+        $byWebPayment = $orders->filter(fn ($o) => $o->source !== 'pos' && $o->transaction)
+            ->groupBy(fn ($o) => $o->transaction->mode ?? 'unknown')
             ->map(fn ($g) => [
                 'count' => $g->count(),
                 'total' => $g->sum('total'),
@@ -136,7 +144,7 @@ class ReportController extends Controller
         $data = compact(
             'from', 'to', 'orders', 'totalOrders',
             'grossSales', 'totalDiscount', 'totalShipping', 'totalTax', 'netSales',
-            'bySource', 'byType', 'byPayment', 'byCashier',
+            'bySource', 'byType', 'byPayment', 'byWebPayment', 'byCashier',
             'productSales', 'expenses', 'totalExpenses',
             'filterCashier', 'filterBranch',
             'generatedAt', 'logoBase64'

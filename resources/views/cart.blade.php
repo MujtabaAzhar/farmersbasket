@@ -85,21 +85,33 @@
                                             <h5 class="theme-clr fw-500">Rs {{ $item->price }}</h5>
                                         </td>
                                         <td class="p-3">
-                         
-                                            <div class="wow fadeInUp" >
+                                            @php
+                                                $variantId  = $item->options->variant_id ?? null;
+                                                $stockLimit = $variantId ? ($stockMap[$variantId] ?? 999) : 999;
+                                                $atMax      = $item->qty >= $stockLimit;
+                                            @endphp
+                                            <div>
                                                 <div class="quantity-wrapper d-inline-flex align-items-center">
-                                                    <form action="{{ route('cart.qty.decrease',['rowId' => $item->rowId]) }}" method="POST">
-                        @csrf
-                        @method('PUT')
-                                                    <button type="button" class="quantityDecrement qty-control__reduce">-</button>
-                                                          </form>
-                                                    <input type="text" name="quantity" value="{{ $item->qty }}" min="1" readonly class="qty-control__number">
-                                                      <form action="{{ route('cart.qty.increase',['rowId' => $item->rowId]) }}" method="POST">
-                        @csrf
-                        @method('PUT')
-                                                    <button type="button" class="quantityIncrement qty-control__increase">+</button>
-                                                            </form>
+                                                    <form action="{{ route('cart.qty.decrease', ['rowId' => $item->rowId]) }}" method="POST">
+                                                        @csrf @method('PUT')
+                                                        <button type="button" class="quantityDecrement qty-control__reduce">-</button>
+                                                    </form>
+
+                                                    <input type="text" value="{{ $item->qty }}" min="1" readonly class="qty-control__number">
+
+                                                    <form action="{{ route('cart.qty.increase', ['rowId' => $item->rowId]) }}" method="POST">
+                                                        @csrf @method('PUT')
+                                                        <button type="button"
+                                                                class="quantityIncrement qty-control__increase {{ $atMax ? 'qty-at-max' : '' }}"
+                                                                @if($atMax) disabled title="Maximum stock reached" @endif>+</button>
+                                                    </form>
                                                 </div>
+
+                                                @if($atMax)
+                                                <div class="text-danger mt-1" style="font-size:11px;font-weight:600;">
+                                                    Max {{ $stockLimit }} available
+                                                </div>
+                                                @endif
                                             </div>
                                         </td>
                                         <td class="p-3">
@@ -182,7 +194,7 @@
                                     <span class="fs-16 text-black fw-medium">Rs {{ Session::get('discounts')['tax'] }}</span>
                                 </div>
                                 <div class="d-flex align-items-center justify-content-between">
-                                    <span class="fs-16 text-color">Total</span>
+                                    <span class="fs-16 text-color">Sub Total</span>
                                     <span class="fs-16 text-black fw-medium">Rs {{ Session::get('discounts')['total'] }}</span>
                                 </div>
                                 @else
@@ -197,7 +209,7 @@
                                     <span class="fs-16 text-black fw-medium">Rs {{ Cart::instance('cart')->tax() }}</span>
                                 </div>
                                 <div class="d-flex align-items-center justify-content-between">
-                                    <span class="fs-16 text-color">Total</span>
+                                    <span class="fs-16 text-color">Sub Total</span>
                                     <span class="fs-16 text-black fw-medium">Rs {{ Cart::instance('cart')->total() }}</span>
                                 </div>
                                 @endif
@@ -231,18 +243,70 @@
 @endsection
 
 @push('scripts')
+<style>
+    .qty-at-max {
+        opacity: .35 !important;
+        cursor: not-allowed !important;
+        pointer-events: none;
+    }
+    #cart-loading-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(255,255,255,0.75);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 14px;
+    }
+    #cart-loading-overlay.active { display: flex; }
+    .cart-spinner {
+        width: 48px; height: 48px;
+        border: 5px solid #e0e0e0;
+        border-top-color: #2ecc71;
+        border-radius: 50%;
+        animation: cart-spin .7s linear infinite;
+    }
+    @keyframes cart-spin { to { transform: rotate(360deg); } }
+    .cart-loading-text { font-size: 14px; font-weight: 600; color: #555; }
+</style>
+
+<div id="cart-loading-overlay">
+    <div class="cart-spinner"></div>
+    <div class="cart-loading-text">Updating cart…</div>
+</div>
 
 <script>
+  function showCartLoader() {
+      document.getElementById('cart-loading-overlay').classList.add('active');
+  }
+
   $(function() {
     $('.qty-control__reduce').on('click', function() {
+      showCartLoader();
       $(this).closest('.qty-control').find('.qty-control__number').trigger('change');
       $(this).closest('form').submit();
     });
     $('.qty-control__increase').on('click', function() {
+      showCartLoader();
       $(this).closest('.qty-control').find('.qty-control__number').trigger('change');
       $(this).closest('form').submit();
     });
     $('.remove-cart').on('click', function() {
+      showCartLoader();
+      $(this).closest('form').submit();
+    });
+
+    // Also cover the quantityDecrement/Increment class (theme aliases)
+    $('.quantityDecrement').on('click', function() {
+      if ($(this).prop('disabled')) return;
+      showCartLoader();
+      $(this).closest('form').submit();
+    });
+    $('.quantityIncrement').on('click', function() {
+      if ($(this).prop('disabled') || $(this).hasClass('qty-at-max')) return;
+      showCartLoader();
       $(this).closest('form').submit();
     });
   });

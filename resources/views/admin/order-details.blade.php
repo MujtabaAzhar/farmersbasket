@@ -33,28 +33,16 @@
             <div class="d-flex align-items-center gap-3">
                 <h3 class="mb-0">{{ $order->order_number }}</h3>
                 <span class="badge px-3 py-1 {{ $isPOS ? 'source-pos' : 'source-online' }}" style="font-size:13px;border-radius:20px;">
-                    {{ $isPOS ? '🖥 POS' : '🌐 Online' }}
+                    {{ $isPOS ? '🖥 POS' : '🌐 Website / E-Commerce' }}
                 </span>
             </div>
             <div class="d-flex align-items-center gap-2 flex-wrap">
-                @if(in_array($order->status, ['confirmed','packed','shipped']) && !$existingShipment)
-                <a href="{{ route('admin.shipments.create', ['order_id' => $order->id]) }}"
-                   class="tf-button style-1" style="font-size:13px;padding:6px 14px;">
-                    🚚 Create Shipment
-                </a>
-                @elseif($existingShipment)
-                <a href="{{ route('admin.shipments.show', $existingShipment) }}"
-                   class="tf-button" style="font-size:13px;padding:6px 14px;background:#17a2b8;color:#fff;">
-                    📦 View Shipment
-                </a>
-                @endif
                 <button onclick="printScreenReceipt()" class="tf-button" style="font-size:13px;padding:6px 14px;background:#2ecc71;color:#fff;border:none;cursor:pointer;">
                     🖨 Print Receipt
                 </button>
                 <button onclick="printStickers()" class="tf-button" style="font-size:13px;padding:6px 14px;background:#e67e22;color:#fff;border:none;cursor:pointer;">
                     📦 Print Stickers
                 </button>
-                <a href="{{ route('admin.shipments.index') }}" style="font-size:13px;">View All Shipments</a>
             </div>
             <ul class="breadcrumbs flex items-center flex-wrap justify-start gap10">
                 <li><a href="{{ route('admin.index') }}"><div class="text-tiny">Dashboard</div></a></li>
@@ -184,20 +172,69 @@
                                 @endif
                             </div>
                         @elseif(!$isPOS && $order->transaction)
-                            @php $tx = $order->transaction; @endphp
+                            @php
+                                $tx  = $order->transaction;
+                                $ts  = $tx->status ?? 'pending';
+                                $ext = $tx->payment_receipt ? strtolower(pathinfo($tx->payment_receipt, PATHINFO_EXTENSION)) : null;
+                                $isPdf = $ext === 'pdf';
+                            @endphp
                             <div class="row g-2">
                                 <div class="col-6">
                                     <div class="detail-label">Payment Mode</div>
-                                    <div class="detail-value text-capitalize">{{ $tx->mode ?? '—' }}</div>
+                                    <div class="detail-value text-capitalize">{{ str_replace('_', ' ', $tx->mode ?? '—') }}</div>
                                 </div>
                                 <div class="col-6">
                                     <div class="detail-label">Transaction Status</div>
                                     <div class="detail-value">
-                                        @php $ts = $tx->status ?? 'pending'; @endphp
                                         <span class="badge bg-{{ $ts === 'approved' ? 'success' : ($ts === 'declined' ? 'danger' : ($ts === 'refunded' ? 'secondary' : 'warning')) }}">{{ ucfirst($ts) }}</span>
                                     </div>
                                 </div>
                             </div>
+
+                            {{-- Payment slip / receipt uploaded by customer --}}
+                            @if($tx->payment_receipt)
+                            <div class="mt-3">
+                                <div class="detail-label mb-2">Payment Slip</div>
+                                @if($isPdf)
+                                    <a href="{{ asset('uploads/payment_receipts/' . $tx->payment_receipt) }}"
+                                       target="_blank"
+                                       class="tf-button style-1"
+                                       style="font-size:13px;padding:6px 14px;display:inline-flex;align-items:center;gap:6px;">
+                                        📄 View PDF Receipt
+                                    </a>
+                                @else
+                                    {{-- Button to open slip in lightbox modal --}}
+                                    <button type="button"
+                                            onclick="document.getElementById('slipModal').style.display='flex'"
+                                            class="tf-button style-1"
+                                            style="font-size:13px;padding:6px 16px;display:inline-flex;align-items:center;gap:6px;">
+                                        🧾 View Payment Slip
+                                    </button>
+
+                                    {{-- Lightbox Modal --}}
+                                    <div id="slipModal"
+                                         onclick="if(event.target===this)this.style.display='none'"
+                                         style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+                                        <div style="position:relative;max-width:90vw;max-height:90vh;">
+                                            <button onclick="document.getElementById('slipModal').style.display='none'"
+                                                    style="position:absolute;top:-14px;right:-14px;background:#fff;border:none;border-radius:50%;width:32px;height:32px;font-size:18px;cursor:pointer;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.3);">
+                                                ×
+                                            </button>
+                                            <img src="{{ asset('uploads/payment_receipts/' . $tx->payment_receipt) }}"
+                                                 alt="Payment Slip"
+                                                 style="max-width:90vw;max-height:88vh;border-radius:8px;display:block;box-shadow:0 4px 24px rgba(0,0,0,.5);">
+                                            <a href="{{ asset('uploads/payment_receipts/' . $tx->payment_receipt) }}"
+                                               download
+                                               style="display:block;text-align:center;margin-top:10px;color:#fff;font-size:13px;">
+                                                ⬇ Download
+                                            </a>
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                            @else
+                                <div class="mt-2 text-muted small">No payment slip uploaded.</div>
+                            @endif
                         @else
                             <span class="text-muted small">No payment record found.</span>
                         @endif
@@ -500,11 +537,15 @@
                         <tr>
                             <td class="pname">
                                 <div class="d-flex align-items-center gap-2">
-                                    @if($item->product)
+                                    @if($item->product && $item->product->image)
                                     <img src="{{ asset('uploads/products/thumbnails/' . $item->product->image) }}"
                                          alt="{{ $item->product->name }}"
                                          class="rounded"
-                                         style="width:48px;height:48px;object-fit:cover;">
+                                         style="width:48px;height:48px;object-fit:cover;"
+                                         onerror="this.src='{{ asset('images/placeholder.png') }}'">
+                                    @elseif($item->product)
+                                    <div class="rounded d-flex align-items-center justify-content-center bg-light"
+                                         style="width:48px;height:48px;font-size:20px;">🛒</div>
                                     @endif
                                     <div>
                                         @if($item->product)
@@ -618,155 +659,55 @@
                 </div>
             </form>
 
-            {{-- Form B: Create Shipment (shown when "shipped" is selected) --}}
-            <form id="form-create-shipment" action="{{ route('admin.shipments.store') }}" method="POST" style="display:none;">
-                @csrf
-                <input type="hidden" name="order_id" value="{{ $order->id }}">
-                <input type="hidden" name="courier_service_id" id="ship_courier_id" value="{{ $couriers->first()?->id }}">
+            {{-- Form B: Shipped — courier + tracking number only --}}
+            <form id="form-shipped" action="{{ route('admin.order.status.update') }}" method="POST" style="display:none;">
+                @csrf @method('PUT')
+                <input type="hidden" name="order_id"     value="{{ $order->id }}">
+                <input type="hidden" name="order_status" value="shipped">
 
-                @if($existingShipment)
-                <div class="alert alert-warning mb-3 small">
-                    ⚠ An active shipment already exists:
-                    <a href="{{ route('admin.shipments.show', $existingShipment) }}" class="fw-bold">
-                        {{ $existingShipment->tracking_number ?: '#'.$existingShipment->id }}
-                    </a> — {{ $existingShipment->status_label }}.
-                </div>
-                @else
                 <div class="alert alert-info mb-3 small">
-                    Fill in the shipping details below. The order status will be set to <strong>Shipped</strong> automatically.
+                    Select a courier and enter the tracking number. The customer will automatically receive a WhatsApp message with the full tracking link.
                 </div>
-                @endif
 
-                {{-- Ship Via --}}
-                <div class="row g-3 mb-3">
+                <div class="row g-3">
                     <div class="col-md-5">
-                        <label class="form-label fw-600">Ship Via <span class="text-danger">*</span></label>
-                        <select id="ship_courier_select" class="form-select">
+                        <label class="form-label fw-600">Courier <span class="text-danger">*</span></label>
+                        <select name="courier_name" id="shipped_courier" class="form-select" required>
+                            <option value="">— Select Courier —</option>
                             @foreach($couriers as $c)
-                            <option value="{{ $c->id }}" data-code="{{ $c->code }}">
-                                @if($c->code === 'internal') 🚐 Farmer's Basket Delivery
-                                @elseif($c->code === 'leopards') 🐆 Leopards Courier
-                                @elseif($c->code === 'tcs') 📦 TCS Couriers
-                                @elseif($c->code === 'mnp') 🚛 M&P Express
-                                @else {{ $c->name }}
-                                @endif
+                            <option value="{{ $c->name }}"
+                                    data-tracking="{{ $c->tracking_url_template }}"
+                                    {{ $order->courier_name === $c->name ? 'selected' : '' }}>
+                                {{ $c->name }}
                             </option>
                             @endforeach
                         </select>
                     </div>
-                </div>
+                    <div class="col-md-5">
+                        <label class="form-label fw-600">Tracking Number <span class="text-danger">*</span></label>
+                        <input type="text" name="tracking_number" id="shipped_tracking"
+                               class="form-control" required maxlength="100"
+                               placeholder="e.g. LRS1234567890"
+                               value="{{ $order->tracking_number }}">
+                    </div>
+                    <div class="col-md-9">
+                        <label class="form-label">Admin Note <small class="text-muted">(optional)</small></label>
+                        <input type="text" name="admin_note" class="form-control" maxlength="500"
+                               placeholder="e.g. Dispatched from warehouse">
+                    </div>
 
-                {{-- Internal: rider + schedule --}}
-                <div id="ship-panel-internal" class="row g-3 mb-3" style="display:none;">
-                    <div class="col-md-4">
-                        <label class="form-label fw-600">Rider <span class="text-danger">*</span></label>
-                        <select name="rider_id" class="form-select">
-                            <option value="">— Select Rider —</option>
-                            @foreach($riders as $rider)
-                            <option value="{{ $rider->id }}">
-                                {{ $rider->name }} ({{ $rider->vehicle_label }}){{ $rider->branch ? ' — '.$rider->branch->name : '' }}
-                            </option>
-                            @endforeach
-                        </select>
-                        @if($riders->isEmpty())
-                            <div class="form-text text-warning">No active riders.
-                                <a href="{{ route('admin.riders.index') }}" target="_blank">Add a rider →</a>
-                            </div>
-                        @endif
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-600">Vehicle <span class="text-danger">*</span></label>
-                        <select name="vehicle_type" class="form-select">
-                            <option value="">— Select —</option>
-                            @foreach(App\Models\Rider::VEHICLES as $key => $label)
-                            <option value="{{ $key }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-600">Delivery Date <span class="text-danger">*</span></label>
-                        <input type="date" name="estimated_delivery" class="form-control" min="{{ date('Y-m-d') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-600">Time Slot <span class="text-danger">*</span></label>
-                        <select name="delivery_time_slot" class="form-select">
-                            <option value="">— Select —</option>
-                            @foreach(App\Models\Shipment::TIME_SLOTS as $key => $label)
-                            <option value="{{ $key }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-
-                {{-- External: parcel details --}}
-                <div id="ship-panel-external" class="row g-3 mb-3" style="display:none;">
-                    <div class="col-md-3">
-                        <label class="form-label">Weight (KG) <span class="text-danger">*</span></label>
-                        <input type="number" name="weight" class="form-control" step="0.1" min="0.1" value="0.5">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Pieces <span class="text-danger">*</span></label>
-                        <input type="number" name="pieces" class="form-control" min="1" value="1">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Declared Value (Rs) <span class="text-danger">*</span></label>
-                        <input type="number" name="declared_value" class="form-control" min="0" value="{{ $order->total }}">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Est. Delivery Date</label>
-                        <input type="date" name="estimated_delivery" class="form-control" min="{{ date('Y-m-d') }}">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Special Instructions</label>
-                        <input type="text" name="special_instructions" class="form-control"
-                               value="Handle with care — Fresh Fruit" maxlength="500">
-                    </div>
-                </div>
-
-                {{-- Recipient & Route (collapsible, pre-filled) --}}
-                <div class="border rounded p-3 mb-3" style="background:#f8f9fa;">
-                    <div class="d-flex justify-content-between align-items-center mb-1" id="recipient-toggle-btn" style="cursor:pointer;">
-                        <span class="fw-600 small text-muted text-uppercase" style="letter-spacing:.4px;">Recipient & Route</span>
-                        <span id="recipient-toggle-icon" class="small text-primary">▼ Edit</span>
-                    </div>
-                    <div id="recipient-fields" style="display:none;">
-                        <div class="row g-2 mt-1">
-                            <div class="col-md-6">
-                                <label class="form-label small mb-1">Recipient Name *</label>
-                                <input type="text" name="recipient_name" class="form-control form-control-sm"
-                                       value="{{ $order->name }}" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small mb-1">Phone *</label>
-                                <input type="text" name="recipient_phone" class="form-control form-control-sm"
-                                       value="{{ $order->phone }}" required>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label small mb-1">Address *</label>
-                                <input type="text" name="recipient_address" class="form-control form-control-sm"
-                                       value="{{ trim($order->address . ($order->locality ? ', '.$order->locality : '')) }}" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small mb-1">Origin City *</label>
-                                <input type="text" name="origin_city" class="form-control form-control-sm"
-                                       value="Multan" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small mb-1">Destination City *</label>
-                                <input type="text" name="destination_city" class="form-control form-control-sm"
-                                       value="{{ $order->city }}" required>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label small mb-1">Notes</label>
-                                <input type="text" name="notes" class="form-control form-control-sm" maxlength="500">
-                            </div>
+                    {{-- Live tracking link preview --}}
+                    <div class="col-12" id="tracking-preview" style="display:none;">
+                        <div class="alert alert-success py-2 mb-0 small d-flex align-items-center gap-2">
+                            🔗 Tracking link:
+                            <a id="tracking-preview-link" href="#" target="_blank" style="word-break:break-all;"></a>
                         </div>
                     </div>
-                </div>
 
-                <div class="d-flex gap-2">
-                    <button type="submit" class="tf-button style-1" id="ship-submit-btn">🚐 Assign & Dispatch</button>
-                    <button type="button" id="ship-cancel-btn" class="tf-button" style="background:#eee;color:#333;">Cancel</button>
+                    <div class="col-12 d-flex gap-2">
+                        <button type="submit" class="tf-button style-1">🚚 Mark as Shipped &amp; Notify Customer</button>
+                        <button type="button" id="shipped-cancel-btn" class="tf-button" style="background:#eee;color:#333;">Cancel</button>
+                    </div>
                 </div>
             </form>
 
@@ -1052,46 +993,34 @@ $(function () {
 
     var initialStatus = '{{ $order->status }}';
 
-    /* ── Switch between simple-update form and shipment-create form ── */
+    /* ── Switch between simple-update and shipped form ── */
     function switchStatusMode(status) {
         var isShipped = (status === 'shipped');
         $('#form-simple-update').toggle(!isShipped);
         $('#simple_status_val').val(status);
-        $('#form-create-shipment').toggle(isShipped);
+        $('#form-shipped').toggle(isShipped);
     }
 
-    /* ── Show the right panel based on chosen courier ── */
-    function onShipCourierChange(courierId, courierCode) {
-        $('#ship_courier_id').val(courierId);
-        var isInternal = (courierCode === 'internal');
-        $('#ship-panel-internal').toggle(isInternal);
-        $('#ship-panel-external').toggle(!isInternal);
-        $('#ship-submit-btn').text(isInternal ? '🚐 Assign & Dispatch' : '📦 Book Shipment');
+    /* ── Live tracking link preview ── */
+    function updateTrackingPreview() {
+        var template = $('#shipped_courier').find('option:selected').data('tracking') || '';
+        var number   = $('#shipped_tracking').val().trim();
+        var preview  = $('#tracking-preview');
+        var link     = $('#tracking-preview-link');
+
+        if (template && number) {
+            var url = template.replace('{tracking_number}', encodeURIComponent(number));
+            link.attr('href', url).text(url);
+            preview.show();
+        } else {
+            preview.hide();
+        }
     }
 
-    /* Init courier panel on page load */
-    var $courierSel = $('#ship_courier_select');
-    if ($courierSel.length) {
-        var $opt = $courierSel.find('option:selected');
-        onShipCourierChange($opt.val(), $opt.data('code'));
-    }
-
-    /* Courier dropdown change */
-    $('#ship_courier_select').on('change', function () {
-        var $sel = $(this).find('option:selected');
-        onShipCourierChange($sel.val(), $sel.data('code'));
-    });
-
-    /* Recipient toggle */
-    $('#recipient-toggle-btn').on('click', function () {
-        var $fields = $('#recipient-fields');
-        var open = $fields.is(':visible');
-        $fields.toggle(!open);
-        $('#recipient-toggle-icon').text(open ? '▼ Edit' : '▲ Collapse');
-    });
+    $('#shipped_courier, #shipped_tracking').on('change input', updateTrackingPreview);
 
     /* Cancel button restores original status */
-    $('#ship-cancel-btn').on('click', function () {
+    $('#shipped-cancel-btn').on('click', function () {
         $('#order_status_picker').val(initialStatus);
         switchStatusMode(initialStatus);
     });
@@ -1103,6 +1032,7 @@ $(function () {
 
     /* Initialise on load */
     switchStatusMode(initialStatus);
+    updateTrackingPreview();
 
 });
 </script>

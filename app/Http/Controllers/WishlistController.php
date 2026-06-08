@@ -13,7 +13,10 @@ class WishlistController extends Controller
     public function index()
     {
         if (Auth::check()) {
-            $items = WishlistItem::with('product')->where('user_id', Auth::id())->get();
+            $items = WishlistItem::with(['product.variants', 'product.category'])
+                ->where('user_id', Auth::id())
+                ->latest()
+                ->get();
         } else {
             $items = Cart::instance('wishlist')->content();
         }
@@ -27,33 +30,37 @@ class WishlistController extends Controller
                 'user_id'    => Auth::id(),
                 'product_id' => $request->id,
             ]);
-        } else {
-            Cart::instance('wishlist')
-                ->add($request->id, $request->name, $request->quantity, $request->price)
-                ->associate('App\Models\Product');
+            return redirect()->back()->with('success', 'Added to wishlist!');
         }
-        return redirect()->back();
+
+        // Guest: session-based
+        Cart::instance('wishlist')
+            ->add($request->id, $request->name, $request->quantity, $request->price)
+            ->associate('App\Models\Product');
+        return redirect()->back()->with('success', 'Added to wishlist!');
     }
 
-    // Used by guest session-based remove (rowId from cart)
+    // Guest session-based remove (rowId)
     public function remove_item($rowId)
     {
         Cart::instance('wishlist')->remove($rowId);
-        return redirect()->back();
+        return redirect()->back()->with('success', 'Removed from wishlist.');
     }
 
-    // Used by auth DB-based remove (product_id)
+    // Auth DB-based remove (product_id)
     public function remove_by_product_id($product_id)
     {
         if (Auth::check()) {
-            WishlistItem::where('user_id', Auth::id())->where('product_id', $product_id)->delete();
+            WishlistItem::where('user_id', Auth::id())
+                ->where('product_id', $product_id)
+                ->delete();
         } else {
             $item = Cart::instance('wishlist')->content()->where('id', $product_id)->first();
             if ($item) {
                 Cart::instance('wishlist')->remove($item->rowId);
             }
         }
-        return redirect()->back();
+        return redirect()->back()->with('success', 'Removed from wishlist.');
     }
 
     public function empty_wishlist()
@@ -63,37 +70,37 @@ class WishlistController extends Controller
         } else {
             Cart::instance('wishlist')->destroy();
         }
-        return redirect()->back();
+        return redirect()->back()->with('success', 'Wishlist cleared.');
     }
 
-    // Guest: move session item to cart. Auth: move DB item to cart.
+    // Move to cart by product_id (auth + guest)
     public function move_to_cart_by_product_id($product_id)
     {
-        $product = Product::findOrFail($product_id);
+        $product = Product::with('variants')->findOrFail($product_id);
 
-        // Redirect to product details so the user can select a variant
-        return redirect()->route('shop.product.details', $product->slug)
-            ->with('info', 'Please select a variant to add to your cart.');
-
-        if (Auth::check()) {
-            WishlistItem::where('user_id', Auth::id())->where('product_id', $product_id)->delete();
-        } else {
-            $item = Cart::instance('wishlist')->content()->where('id', $product_id)->first();
-            if ($item) {
-                Cart::instance('wishlist')->remove($item->rowId);
-            }
+        if ($product->stock_status === 'outofstock') {
+            return redirect()->back()->with('error', '"' . $product->name . '" is currently out of stock and cannot be added to cart.');
         }
 
-        return redirect()->back();
+        // Redirect to product page so user can pick a variant
+        return redirect()->route('shop.product.details', $product->slug)
+            ->with('info', 'Please select a variant and quantity to add to your cart.');
     }
 
-    // Legacy: move session item by rowId (kept for existing guest flow)
+    // Legacy guest rowId move
     public function move_to_cart($rowId)
     {
-        $item = Cart::instance('wishlist')->get($rowId);
+        $item    = Cart::instance('wishlist')->get($rowId);
+        $product = Product::find($item->id);
+
+        if ($product && $product->stock_status === 'outofstock') {
+            return redirect()->back()->with('error', '"' . $item->name . '" is currently out of stock.');
+        }
+
         Cart::instance('wishlist')->remove($rowId);
-        Cart::instance('cart')->add($item->id, $item->name, $item->qty, $item->price)->associate('App\Models\Product');
-        return redirect()->back();
+        Cart::instance('cart')->add($item->id, $item->name, $item->qty, $item->price)
+            ->associate('App\Models\Product');
+        return redirect()->back()->with('success', 'Moved to cart!');
     }
 
     // AJAX toggle for auth users
@@ -104,16 +111,15 @@ class WishlistController extends Controller
         }
 
         $product_id = $request->product_id;
-        $existing = WishlistItem::where('user_id', Auth::id())->where('product_id', $product_id)->first();
+        $existing   = WishlistItem::where('user_id', Auth::id())
+                        ->where('product_id', $product_id)->first();
 
         if ($existing) {
             $existing->delete();
-            $wishlisted = false;
-        } else {
-            WishlistItem::create(['user_id' => Auth::id(), 'product_id' => $product_id]);
-            $wishlisted = true;
+            return response()->json(['wishlisted' => false]);
         }
 
-        return response()->json(['wishlisted' => $wishlisted]);
+        WishlistItem::create(['user_id' => Auth::id(), 'product_id' => $product_id]);
+        return response()->json(['wishlisted' => true]);
     }
 }

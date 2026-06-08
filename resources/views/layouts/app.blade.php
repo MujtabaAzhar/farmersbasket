@@ -347,6 +347,26 @@
             </div>
         </div>
     </header>
+ @if(session('error'))
+    <div style="position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:9999;min-width:320px;max-width:520px;">
+        <div class="alert alert-danger alert-dismissible d-flex align-items-center gap-2 shadow-lg" role="alert"
+             style="border-radius:10px;font-size:14px;font-weight:500;">
+            <i class="fa-solid fa-circle-xmark fs-16"></i>
+            <span>{{ session('error') }}</span>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+        </div>
+    </div>
+    @endif
+    @if(session('success'))
+    <div style="position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:9999;min-width:320px;max-width:520px;">
+        <div class="alert alert-success alert-dismissible d-flex align-items-center gap-2 shadow-lg" role="alert"
+             style="border-radius:10px;font-size:14px;font-weight:500;">
+            <i class="fa-solid fa-circle-check fs-16"></i>
+            <span>{{ session('success') }}</span>
+            <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+        </div>
+    </div>
+    @endif
  @yield('content')
 
 

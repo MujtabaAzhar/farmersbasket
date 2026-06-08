@@ -16,28 +16,76 @@ class ShipmentController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Shipment::with(['order', 'courier', 'rider', 'bookedBy'])->latest();
+        // ── Courier stats cards ───────────────────────────────────────────────
+        $allCouriers = \App\Models\Order::whereNotNull('courier_name')
+            ->whereIn('status', ['shipped', 'delivered'])
+            ->selectRaw('courier_name, COUNT(*) as total_all')
+            ->groupBy('courier_name')
+            ->orderByDesc('total_all')
+            ->get();
 
+        $thisMonth = \App\Models\Order::whereNotNull('courier_name')
+            ->whereIn('status', ['shipped', 'delivered'])
+            ->whereYear('updated_at', now()->year)
+            ->whereMonth('updated_at', now()->month)
+            ->selectRaw('courier_name, COUNT(*) as total_month')
+            ->groupBy('courier_name')
+            ->get()
+            ->keyBy('courier_name');
+
+        $lastMonth = \App\Models\Order::whereNotNull('courier_name')
+            ->whereIn('status', ['shipped', 'delivered'])
+            ->whereYear('updated_at', now()->subMonth()->year)
+            ->whereMonth('updated_at', now()->subMonth()->month)
+            ->selectRaw('courier_name, COUNT(*) as total_last')
+            ->groupBy('courier_name')
+            ->get()
+            ->keyBy('courier_name');
+
+        // ── Summary totals ────────────────────────────────────────────────────
+        $totalShipped   = \App\Models\Order::whereIn('status', ['shipped', 'delivered'])
+                            ->whereNotNull('courier_name')->count();
+        $shippedToday   = \App\Models\Order::where('status', 'shipped')
+                            ->whereDate('updated_at', today())->count();
+        $deliveredToday = \App\Models\Order::where('status', 'delivered')
+                            ->whereDate('delivered_date', today())->count();
+        $inTransit      = \App\Models\Order::where('status', 'shipped')->count();
+
+        // ── Filtered orders list ──────────────────────────────────────────────
+        $query = \App\Models\Order::with(['orderItems'])
+            ->whereNotNull('courier_name')
+            ->whereIn('status', ['shipped', 'delivered']);
+
+        if ($request->filled('courier')) {
+            $query->where('courier_name', $request->courier);
+        }
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-        if ($request->filled('courier')) {
-            $query->where('courier_service_id', $request->courier);
+        if ($request->filled('month')) {
+            [$yr, $mo] = explode('-', $request->month);
+            $query->whereYear('updated_at', $yr)->whereMonth('updated_at', $mo);
         }
         if ($request->filled('q')) {
             $q = $request->q;
             $query->where(function ($sub) use ($q) {
                 $sub->where('tracking_number', 'like', "%{$q}%")
-                    ->orWhereHas('order', fn($o) => $o->where('id', $q)
-                        ->orWhere('phone', 'like', "%{$q}%")
-                        ->orWhere('name', 'like', "%{$q}%"));
+                    ->orWhere('order_number', 'like', "%{$q}%")
+                    ->orWhere('phone', 'like', "%{$q}%")
+                    ->orWhere('name', 'like', "%{$q}%");
             });
         }
 
-        $shipments = $query->paginate(20)->withQueryString();
-        $couriers  = CourierService::where('is_active', true)->get();
+        $orders = $query->latest()->paginate(25)->withQueryString();
 
-        return view('admin.shipments.index', compact('shipments', 'couriers'));
+        // Distinct courier names for filter dropdown
+        $courierNames = \App\Models\Order::whereNotNull('courier_name')
+            ->distinct()->pluck('courier_name')->sort()->values();
+
+        return view('admin.shipments.index', compact(
+            'orders', 'allCouriers', 'thisMonth', 'lastMonth',
+            'courierNames', 'totalShipped', 'shippedToday', 'deliveredToday', 'inTransit'
+        ));
     }
 
     public function create(Request $request)

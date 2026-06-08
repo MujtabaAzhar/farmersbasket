@@ -148,10 +148,17 @@
                                                 <img src="{{ asset('uploads/products/' . $product->image) }}"
                                                     alt="img" class="w-100">
                                             </div>
+                                            @if($product->stock_status === 'outofstock')
+                                            <div class="position-absolute z-1 top-0 fs-12 py-1 lh-base ps-2 pe-3 text-white heading-font fw-500 d-inline-flex align-items-center gap-1"
+                                                style="border-bottom-right-radius:20px;background:#dc3545;">
+                                                Out of Stock
+                                            </div>
+                                            @else
                                             <div class="position-absolute z-1 top-0 theme3-bg fs-12 py-1 lh-base ps-2 pe-3 text-white heading-font fw-500 d-inline-flex align-items-center gap-1"
                                                 style="border-bottom-right-radius: 20px;">
                                                 Sale
                                             </div>
+                                            @endif
                                             <div class="cont py-3 px-xxl-4 px-3 bg-white">
                                                 <h6 class="mb-2">
                                                   {{ $product->name }}
@@ -190,7 +197,12 @@
                                                   <div class="d-flex align-items-center gap-sm-3 gap-2 flex-wrap ">
                                                     <div class="d-flex align-items-center gap-1">
                                                       
-                                                        @if (Cart::instance('cart')->content()->where('id', $product->id)->count() > 0)
+                                                        @if($product->stock_status === 'outofstock')
+                                                            <span class="heading-font rounded-pill py-2 px-3 d-inline-block"
+                                                                  style="background:#f8d7da;color:#842029;border:1px solid #f5c2c7;font-size:13px;font-weight:600;cursor:not-allowed;">
+                                                                Out of Stock
+                                                            </span>
+                                                        @elseif(Cart::instance('cart')->content()->where('id', $product->id)->count() > 0)
                                                             <a href="{{ route('cart.index') }}"
                                                                 class="theme-btn heading-font rounded-pill py-2 px-3">
                                                                 Go to Cart

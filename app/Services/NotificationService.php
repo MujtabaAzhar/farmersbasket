@@ -42,6 +42,18 @@ class NotificationService
         } elseif ($phone) {
             self::sendWhatsApp($phone, self::buildOrderPlacedMessage($order));
         }
+
+        // Notify admin for every new website (e-commerce) order
+        self::notifyAdmin($order);
+    }
+
+    public static function notifyAdmin(Order $order): void
+    {
+        $adminPhone = config('services.whatsapp.admin_phone');
+        if (!$adminPhone) {
+            return;
+        }
+        self::sendWhatsApp($adminPhone, self::buildAdminNewOrderMessage($order));
     }
 
     public static function orderStatusUpdated(Order $order): void
@@ -111,6 +123,74 @@ class NotificationService
     // -------------------------------------------------------------------------
     // Message builders
     // -------------------------------------------------------------------------
+
+    private static function buildAdminNewOrderMessage(Order $order): string
+    {
+        if (!$order->relationLoaded('orderItems')) {
+            $order->load('orderItems.product');
+        }
+        if (!$order->relationLoaded('giftOrder')) {
+            $order->load('giftOrder');
+        }
+        if (!$order->relationLoaded('transaction')) {
+            $order->load('transaction');
+        }
+
+        $gift    = $order->giftOrder;
+        $isGift  = (bool) $gift;
+
+        $payModeRaw = $order->transaction?->mode ?? null;
+        $payLabel   = match ($payModeRaw) {
+            'bank_transfer' => '🏦 Bank Transfer',
+            'wallet'        => '📱 JazzCash',
+            default         => $payModeRaw ? ucwords(str_replace('_', ' ', $payModeRaw)) : 'N/A',
+        };
+
+        $lines = [
+            $isGift
+                ? "🎁 *New GIFT Order — Website!*"
+                : "🌐 *New Website Order Received!*",
+            "",
+            "📋 *Order#: {$order->order_number}*",
+            "🕐 " . $order->created_at->format('d M Y, h:i A'),
+            "",
+        ];
+
+        if ($isGift) {
+            $lines[] = "━━━━ SENDER ━━━━";
+            $lines[] = "👤 " . ($gift->sender_name  ?: 'N/A');
+            $lines[] = "📞 " . ($gift->sender_phone ?: 'N/A');
+            $lines[] = "";
+            $lines[] = "━━━━ RECEIVER (Deliver to) ━━━━";
+            $lines[] = "👤 " . ($gift->receiver_name    ?: 'N/A');
+            $lines[] = "📞 " . ($gift->receiver_phone   ?: 'N/A');
+            if ($gift->receiver_city)    $lines[] = "🏙 " . $gift->receiver_city;
+            if ($gift->receiver_address) $lines[] = "📍 " . $gift->receiver_address;
+            if ($gift->gift_message)     $lines[] = "💌 \"" . $gift->gift_message . "\"";
+        } else {
+            $lines[] = "👤 " . ($order->name    ?: 'N/A');
+            $lines[] = "📞 " . ($order->phone   ?: 'N/A');
+            $lines[] = "🏙 " . ($order->city    ?: 'N/A');
+            if ($order->address) $lines[] = "📍 " . $order->address;
+        }
+
+        $lines[] = "";
+        $lines[] = "🛒 *Items:*";
+
+        foreach ($order->orderItems as $item) {
+            $variant = $item->variant_label ? " ({$item->variant_label})" : '';
+            $name    = $item->product?->name ?? 'Product #' . $item->product_id;
+            $lines[] = "  • {$name}{$variant} × {$item->quantity} — Rs " . number_format($item->price * $item->quantity, 0);
+        }
+
+        $lines[] = "";
+        $lines[] = "💰 *Total  : Rs " . number_format($order->total, 0) . "*";
+        $lines[] = "💳 Payment : {$payLabel} _(Pending verification)_";
+        $lines[] = "";
+        $lines[] = "🔗 " . url(route('admin.order.details', $order->id, false));
+
+        return implode("\n", $lines);
+    }
 
     private static function buildOrderPlacedMessage(Order $order): string
     {
@@ -229,9 +309,15 @@ class NotificationService
         ];
 
         if ($order->status === 'shipped' && $order->tracking_number) {
-            $lines[] = "Tracking#: {$order->tracking_number}";
             if ($order->courier_name) {
-                $lines[] = "Courier  : {$order->courier_name}";
+                $lines[] = "🚚 Courier  : {$order->courier_name}";
+            }
+            $lines[] = "📦 Tracking#: {$order->tracking_number}";
+
+            $courierService = \App\Models\CourierService::where('name', $order->courier_name)->first();
+            $trackingUrl    = $courierService?->trackingUrl($order->tracking_number);
+            if ($trackingUrl) {
+                $lines[] = "🔗 Track your order: {$trackingUrl}";
             }
         }
 

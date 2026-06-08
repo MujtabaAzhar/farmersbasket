@@ -100,11 +100,12 @@ tr.tot td {
     display: inline-block; padding: 1px 5px;
     border-radius: 8px; font-size: 7.5px; font-weight: 700;
 }
-.b-pos    { background: #fef9c3; color: #854d0e; }
-.b-online { background: #dbeafe; color: #1e40af; }
-.b-gift   { background: #fce7f3; color: #9d174d; }
-.b-pickup { background: #dcfce7; color: #166534; }
-.b-booking{ background: #ede9fe; color: #5b21b6; }
+.b-pos     { background: #fef9c3; color: #854d0e; }
+.b-online  { background: #dbeafe; color: #1e40af; }
+.b-website { background: #e0f2fe; color: #075985; }
+.b-gift    { background: #fce7f3; color: #9d174d; }
+.b-pickup  { background: #dcfce7; color: #166534; }
+.b-booking { background: #ede9fe; color: #5b21b6; }
 </style>
 </head>
 <body>
@@ -145,7 +146,13 @@ tr.tot td {
             <tbody>
                 @foreach($bySource as $src => $d)
                 <tr>
-                    <td><span class="badge {{ $src==='pos' ? 'b-pos' : 'b-online' }}">{{ $src==='pos' ? 'POS Counter' : 'Online' }}</span></td>
+                    <td>
+                        @if($src === 'pos')
+                            <span class="badge b-pos">🖥 POS Counter</span>
+                        @else
+                            <span class="badge b-website">🌐 Website / E-Commerce</span>
+                        @endif
+                    </td>
                     <td class="r">{{ $d['count'] }}</td>
                     <td class="r">{{ number_format($d['total'], 0) }}</td>
                     <td class="r">{{ $netSales>0 ? number_format(($d['total']/$netSales)*100,1) : 0 }}%</td>
@@ -174,42 +181,62 @@ tr.tot td {
     </div>
 </div>
 
-{{-- ══ PAYMENT + CASHIER (side by side) ══ --}}
-@if($byPayment->count() || $byCashier->count())
+{{-- ══ PAYMENT METHODS ══ --}}
+@if($byPayment->count() || $byWebPayment->count() || $byCashier->count())
 <div class="two-col">
+
+    {{-- POS Payments --}}
     @if($byPayment->count())
     <div class="col-l">
-        <div class="section-title">Payment Methods (POS)</div>
+        <div class="section-title">🖥 POS Payment Methods</div>
         @php $pmL=['cash'=>'Cash','online_transfer'=>'Online Transfer','credit'=>'Credit/Pending']; @endphp
         <table>
             <thead><tr><th>Method</th><th class="r">Txns</th><th class="r">Amount (Rs)</th></tr></thead>
             <tbody>
                 @foreach($byPayment as $m => $d)
-                <tr><td>{{ $pmL[$m] ?? ucfirst($m) }}</td><td class="r">{{ $d['count'] }}</td><td class="r">{{ number_format($d['total'], 0) }}</td></tr>
+                <tr><td>{{ $pmL[$m] ?? ucwords(str_replace('_',' ',$m)) }}</td><td class="r">{{ $d['count'] }}</td><td class="r">{{ number_format($d['total'], 0) }}</td></tr>
                 @endforeach
             </tbody>
         </table>
     </div>
     @endif
-    @if($byCashier->count())
+
+    {{-- Website Payments --}}
+    @if($byWebPayment->count())
     <div class="{{ $byPayment->count() ? 'col-r' : 'col-l' }}">
-        <div class="section-title">By Cashier / Shift</div>
+        <div class="section-title">🌐 Website Payment Methods</div>
+        @php $webPmL=['bank_transfer'=>'Bank Transfer','wallet'=>'JazzCash']; @endphp
         <table>
-            <thead><tr><th>Cashier</th><th class="r">Orders</th><th class="r">Total (Rs)</th><th class="r">Avg</th></tr></thead>
+            <thead><tr><th>Method</th><th class="r">Txns</th><th class="r">Amount (Rs)</th></tr></thead>
             <tbody>
-                @foreach($byCashier as $row)
-                <tr>
-                    <td>{{ $row['name'] }}</td>
-                    <td class="r">{{ $row['count'] }}</td>
-                    <td class="r">{{ number_format($row['total'], 0) }}</td>
-                    <td class="r">{{ $row['count'] ? number_format($row['total']/$row['count'], 0) : 0 }}</td>
-                </tr>
+                @foreach($byWebPayment as $m => $d)
+                <tr><td>{{ $webPmL[$m] ?? ucwords(str_replace('_',' ',$m)) }}</td><td class="r">{{ $d['count'] }}</td><td class="r">{{ number_format($d['total'], 0) }}</td></tr>
                 @endforeach
             </tbody>
         </table>
     </div>
     @endif
+
 </div>
+
+{{-- Cashier breakdown on its own row if payments already used both columns --}}
+@if($byCashier->count())
+<div class="section-title">By Cashier / Shift</div>
+<table>
+    <thead><tr><th>Cashier</th><th class="r">Orders</th><th class="r">Total (Rs)</th><th class="r">Avg Order</th></tr></thead>
+    <tbody>
+        @foreach($byCashier as $row)
+        <tr>
+            <td>{{ $row['name'] }}</td>
+            <td class="r">{{ $row['count'] }}</td>
+            <td class="r">{{ number_format($row['total'], 0) }}</td>
+            <td class="r">{{ $row['count'] ? number_format($row['total']/$row['count'], 0) : 0 }}</td>
+        </tr>
+        @endforeach
+    </tbody>
+</table>
+@endif
+
 @endif
 
 {{-- ══ PRODUCTS + EXPENSES (side by side) ══ --}}
@@ -256,6 +283,56 @@ tr.tot td {
         @endif
     </div>
 </div>
+
+{{-- ══ ALL ORDERS LIST ══ --}}
+@if($orders->count())
+<div class="section-title">Order Details</div>
+<table>
+    <thead>
+        <tr>
+            <th>Order #</th>
+            <th>Source</th>
+            <th>Customer</th>
+            <th>Type</th>
+            <th>Payment</th>
+            <th class="r">Total (Rs)</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        @php $typeLabels=['pickup'=>'Pickup','booking'=>'Delivery','gift'=>'Gift','online'=>'Website']; @endphp
+        @foreach($orders as $o)
+        @php
+            $isWeb     = $o->source !== 'pos';
+            $payMethod = $isWeb
+                ? ($o->transaction ? ($o->transaction->mode === 'bank_transfer' ? 'Bank Transfer' : 'JazzCash') : 'N/A')
+                : (isset($o->posPayment) ? ucwords(str_replace('_',' ',$o->posPayment->method ?? '')) : 'N/A');
+            $orderType = $isWeb ? 'Website' : ($typeLabels[$o->type ?? ''] ?? ucfirst($o->type ?? 'POS'));
+        @endphp
+        <tr>
+            <td style="font-weight:700;">{{ $o->order_number }}</td>
+            <td>
+                @if($isWeb)
+                    <span class="badge b-website">🌐 WEBSITE</span>
+                @else
+                    <span class="badge b-pos">🖥 POS</span>
+                @endif
+            </td>
+            <td>{{ $o->name ?: ($o->user?->name ?? '—') }}</td>
+            <td>{{ $orderType }}</td>
+            <td>{{ $payMethod }}</td>
+            <td class="r" style="font-weight:700;">{{ number_format($o->total, 0) }}</td>
+            <td>{{ ucfirst($o->status) }}</td>
+        </tr>
+        @endforeach
+        <tr class="tot">
+            <td colspan="5">TOTAL</td>
+            <td class="r">{{ number_format($netSales, 0) }}</td>
+            <td>{{ $totalOrders }} orders</td>
+        </tr>
+    </tbody>
+</table>
+@endif
 
 {{-- ══ NET TOTAL BOX ══ --}}
 <div class="net-box">

@@ -383,37 +383,59 @@
             $('.size-option').first().click();
         }
 
-        // Validate variant selection on form submit
+        // ── Quantity +/- buttons ──────────────────────────────────────────
+        function getQtyInput()     { return $('input[name="quantity_check"]'); }
+        function getHiddenQty()    { return $('input[name="quantity"]'); }
+        function getCurrentQty()   { return parseInt(getQtyInput().val()) || 1; }
+
+        function setQty(val) {
+            var max = selectedStockQty > 0 ? selectedStockQty : 99;
+            val = Math.max(1, Math.min(val, max));
+            getQtyInput().val(val);
+            getHiddenQty().val(val);
+            // Show warning if capped
+            if (selectedStockQty > 0 && val >= selectedStockQty) {
+                $('#size-stock-info').show();
+                $('#stock-message').text('Maximum available: ' + selectedStockQty + ' units');
+            } else {
+                $('#size-stock-info').hide();
+            }
+        }
+
+        // Override theme increment/decrement with stock-aware versions
+        $('.quantityIncrement').off('click').on('click', function(e) {
+            e.stopImmediatePropagation();
+            setQty(getCurrentQty() + 1);
+        });
+        $('.quantityDecrement').off('click').on('click', function(e) {
+            e.stopImmediatePropagation();
+            setQty(getCurrentQty() - 1);
+        });
+
+        // Reset qty to 1 whenever a variant is selected
+        $('.size-option').on('click', function() {
+            setQty(1);
+        });
+
+        // Validate on form submit
         $('form[name="addtocart-form"]').on('submit', function(e) {
             if ($('.size-option').length > 0 && !selectedVariantId) {
                 e.preventDefault();
-                alert('Please select a variant before adding to cart');
+                alert('Please select a variant before adding to cart.');
                 return false;
             }
             if (selectedStockQty <= 0) {
                 e.preventDefault();
-                alert('This variant is out of stock');
+                alert('This variant is out of stock.');
                 return false;
             }
-        });
-        
-        // Quantity increment/decrement handling
-        $('.quantityIncrement, .quantityDecrement').on('click', function() {
-            var input = $('input[name="quantity_check"]');
-            var currentVal = parseInt(input.val());
-            
-            // Allow time for any existing increment/decrement logic to update the input
-            setTimeout(function() {
-                var newVal = parseInt(input.val());
-                $('input[name="quantity"]').val(newVal);
-                
-                // Check if quantity exceeds available stock
-                if(selectedSizeQuantity > 0 && newVal > selectedSizeQuantity) {
-                    alert('Only ' + selectedSizeQuantity + ' items available for this size');
-                    input.val(selectedSizeQuantity);
-                    $('input[name="quantity"]').val(selectedSizeQuantity);
-                }
-            }, 50);
+            var qty = getCurrentQty();
+            if (qty > selectedStockQty) {
+                e.preventDefault();
+                alert('Only ' + selectedStockQty + ' units available.');
+                setQty(selectedStockQty);
+                return false;
+            }
         });
     });
 </script>
