@@ -802,9 +802,13 @@
         'shipping'    => $order->shipping ?? 0,
         'discount'    => $order->discount ?? 0,
         'total'       => $order->total,
-        'courierName' => $order->courier_name ?? '',
-        'orderNote'   => $order->order_note  ?? '',
-        'logoUrl'     => asset('images/logo/logo.png'),
+        'courierName'       => $order->courier_name ?? '',
+        'orderNote'         => $order->order_note  ?? '',
+        'logoUrl'           => asset('images/logo/logo.png'),
+        'paymentReceiptUrl' => (!$isPOS && $order->transaction && $order->transaction->payment_receipt
+            && strtolower(pathinfo($order->transaction->payment_receipt, PATHINFO_EXTENSION)) !== 'pdf')
+            ? asset('uploads/payment_receipts/' . $order->transaction->payment_receipt)
+            : null,
     ];
 @endphp
 var stickerData = @json($stickerPayload);
@@ -931,6 +935,10 @@ function printScreenReceipt() {
             + '<tr class="r-divrow"><td colspan="3"><div class="r-thin-line"></div></td></tr>'
             + '<tr><td class="r-dt-grand">Grand Total:</td><td class="r-dt-mid"></td><td class="r-dt-grand r-dt-val">' + fmt(d.total) + '</td></tr>'
             + '<tr><td class="r-dt-lbl">Paid Amount:</td><td class="r-dt-mid"></td><td class="r-dt-val">' + fmt(d.total) + '</td></tr>'
+            + (d.paymentReceiptUrl
+                ? '<tr><td colspan="3" style="padding:2px 0 0;text-align:center;"><div style="font-size:7.5pt;font-weight:bold;margin-bottom:1px;">Payment Slip:</div>'
+                  + '<img src="' + escH(d.paymentReceiptUrl) + '" style="max-height:28mm;max-width:70mm;border:1px solid #bbb;display:block;margin:0 auto;" alt="Payment Slip"></td></tr>'
+                : '')
             + '</tbody></table></div>';
 
         var footer = '<div class="r-footer">For Inquiries &amp; suggestions Please Contact: Help line: <strong>03-111-222-384</strong><br>'

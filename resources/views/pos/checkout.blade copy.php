@@ -217,25 +217,7 @@
             {{-- Courier Selection (delivery / gift orders only) --}}
             @if(count($courierCompanies))
             <div class="section-card" id="courier-section" style="display:none;">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                    <h5 style="margin:0;">Courier / Shipping</h5>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#555;cursor:pointer;margin:0;">
-                        <input type="checkbox" id="bulk-order-chk" style="width:15px;height:15px;cursor:pointer;accent-color:#e67e22;">
-                        📦 Bulk Order
-                    </label>
-                </div>
-
-                {{-- Manual shipping input (bulk order mode) --}}
-                <div id="bulk-shipping-wrap" style="display:none;margin-bottom:10px;">
-                    <div class="form-group" style="margin:0;">
-                        <label>Shipping Amount (Rs)</label>
-                        <input type="number" id="bulk-shipping-input" min="0" step="1"
-                               placeholder="e.g. 5000" oninput="onBulkShippingInput()"
-                               style="font-size:15px;font-weight:700;">
-                    </div>
-                </div>
-
-                {{-- Normal courier buttons --}}
+                <h5>Courier / Shipping</h5>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;" id="courier-btns">
                     @foreach($courierCompanies as $i => $c)
                     <button type="button"
@@ -392,43 +374,6 @@ function selectCourier(btn) {
     orderShipping = fee;
     recalcTotal(parseFloat($('#f_discount').val()) || 0);
     document.getElementById('courier-none-msg').style.display = 'none';
-}
-
-// ─── Bulk Order toggle ─────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function () {
-    var chk = document.getElementById('bulk-order-chk');
-    if (!chk) return;
-    chk.addEventListener('change', function () {
-        var isBulk = this.checked;
-        document.getElementById('bulk-shipping-wrap').style.display = isBulk ? '' : 'none';
-        document.getElementById('courier-btns').style.display       = isBulk ? 'none' : '';
-
-        if (isBulk) {
-            // Clear any courier selection
-            document.querySelectorAll('.courier-btn').forEach(function(b) {
-                b.style.borderColor = '#ddd';
-                b.style.background  = '#fff';
-                b.style.color       = '#444';
-            });
-            var bulkAmt = parseFloat(document.getElementById('bulk-shipping-input').value) || 0;
-            $('#f_courier_name').val('Bulk Order');
-            $('#f_courier_fee').val(bulkAmt);
-            orderShipping = bulkAmt;
-        } else {
-            // Restore: auto-select first courier
-            var first = document.querySelector('.courier-btn');
-            if (first) selectCourier(first);
-        }
-        recalcTotal(parseFloat($('#f_discount').val()) || 0);
-    });
-});
-
-function onBulkShippingInput() {
-    var bulkAmt = parseFloat(document.getElementById('bulk-shipping-input').value) || 0;
-    $('#f_courier_name').val('Bulk Order');
-    $('#f_courier_fee').val(bulkAmt);
-    orderShipping = bulkAmt;
-    recalcTotal(parseFloat($('#f_discount').val()) || 0);
 }
 
 // If no couriers configured, use default shipping fee for delivery
